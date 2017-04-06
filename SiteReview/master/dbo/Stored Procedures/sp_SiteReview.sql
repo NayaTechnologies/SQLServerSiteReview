@@ -1,4 +1,4 @@
-﻿/*
+/*
  =============================================
  Author:			Sharon Rimer
  M@il:				sharonr@naya-tech.co.il
@@ -26,7 +26,7 @@ LICENSE:
 	debug collect
 	Try Catch
  ============================================================================*/
-ALTER PROCEDURE [dbo].[sp_SiteReview] ( @Client NVARCHAR(255) = N'General Client',@Allow_Weak_Password_Check BIT = 0,@debug BIT = 0,@Display BIT = 0,@Mask BIT = 1,@Help BIT = 0)
+CREATE PROCEDURE [dbo].[sp_SiteReview] ( @Client NVARCHAR(255) = N'General Client',@Allow_Weak_Password_Check BIT = 0,@debug BIT = 0,@Display BIT = 0,@Mask BIT = 1,@Help BIT = 0)
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -40,19 +40,16 @@ BEGIN
 	DECLARE @ClientVersion NVARCHAR(15);
 	DECLARE @ThankYou NVARCHAR(4000);
 	DECLARE @Print NVARCHAR(4000);
-	SET @ClientVersion = '1.498';
+	SET @ClientVersion = '1.499';
 	SET @ThankYou = 'Thank you for using this our SQL Server Site Review.
 --------------------------------------------------------------------------------
-
 Find out more in our site - www.NAYA-Technologies.com
-
 --------------------------------------------------------------------------------
 @ClientVersion				:' + @ClientVersion;
 	IF @Help = 1
 	BEGIN
 		SET	 @Print = @ThankYou + '
 @ClientVersion				:' + @ClientVersion + '
-
 Input Parameters:
 --------------------------------------------------------------------------------
 @Client						: Haeder Name for your report.
@@ -77,7 +74,6 @@ Input Parameters:
 	SELECT @LogPath = CONVERT(VARCHAR(2000),SERVERPROPERTY('ErrorLogFileName'))
 
 	SELECT @LogPath = SUBSTRING (@LogPath,CHARINDEX('''',@LogPath)+1, LEN(@LogPath)+1 - CHARINDEX('''',@LogPath)-CHARINDEX('\',REVERSE(@LogPath)))
-
     DECLARE @showadvanced INT ,
 			@cmdshell INT, 
 			@olea INT;
@@ -86,7 +82,6 @@ Input Parameters:
 	DECLARE @Filename VARCHAR(1000);
 	DECLARE @FilePath VARCHAR(1000);	
 	DECLARE @cmd NVARCHAR(MAX);
-
     SELECT  @showadvanced = 0 ,
             @cmdshell = 0,
 			@olea = 0;
@@ -97,8 +92,6 @@ Input Parameters:
         RECONFIGURE WITH OVERRIDE;
 		SET @showadvanced = 1;
     END;
-
-
     IF EXISTS ( SELECT TOP 1 1 FROM sys.configurations C WHERE   C.name = 'xp_cmdshell' AND C.value = 0 )
     BEGIN
 		IF @debug = 1 RAISERROR ('Turn on "xp_cmdshell"',0,1) WITH NOWAIT;
@@ -108,7 +101,6 @@ Input Parameters:
 	
     END;
     ELSE
-
     BEGIN TRY
         DECLARE @MajorVersion INT;
         IF OBJECT_ID('tempdb..#checkversion') IS NOT NULL DROP TABLE #checkversion;
@@ -166,7 +158,6 @@ Input Parameters:
         IF @MajorVersion > 1050
             BEGIN
                 EXEC sp_MSforeachdb N'Use [?]; 
-
 INSERT INTO #VLFInfo 
 EXEC sp_executesql N''DBCC LOGINFO([?]) WITH NO_INFOMSGS''; 
 	 
@@ -174,14 +165,12 @@ INSERT INTO #VLFCountResults
 SELECT DB_NAME(), COUNT(*) 
 FROM #VLFInfo
 OPTION(RECOMPILE); 
-
 TRUNCATE TABLE #VLFInfo;';
             END;
         ELSE
             BEGIN
 	    
                 EXEC sp_MSforeachdb N'Use [?]; 
-
 INSERT INTO #VLFInfo2008
 EXEC sp_executesql N''DBCC LOGINFO([?]) WITH NO_INFOMSGS''; 
 	 
@@ -189,7 +178,6 @@ INSERT INTO #VLFCountResults
 SELECT DB_NAME(), COUNT(*) 
 FROM #VLFInfo2008
 OPTION(RECOMPILE); 
-
 TRUNCATE TABLE #VLFInfo;';
             END;
 		INSERT @DebugError VALUES  ('VLF Counts',NULL,DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
@@ -211,16 +199,19 @@ MAXDOP (Max degree of parallelism) must be defined as 1 in both SQL Server 2000 
 		SET @DebugStartTime = GETDATE();
 		IF @debug = 1 RAISERROR ('Collect Software',0,1) WITH NOWAIT;
 		DECLARE @DB_Exclude TABLE
-		(DatabaseName sysname)
+		(DatabaseName sysname);
+		DECLARE @DB_tfs TABLE
+		(DatabaseName sysname);
 		--CRM Dynamics
 		INSERT @DB_Exclude
 		SELECT D.name
 		FROM   sys.databases D
 		WHERE  D.name IN ('MSCRM_CONFIG','OrganizationName_MSCRM')
         OPTION  ( RECOMPILE );
-		DECLARE @IsCRMDynamicsON BIT = 0
-		DECLARE @IsBizTalkON BIT = 0
-		DECLARE @IsSharePointON BIT = 0
+		DECLARE @IsCRMDynamicsON BIT = 0;
+		DECLARE @IsBizTalkON BIT = 0;
+		DECLARE @IsSharePointON BIT = 0;
+		DECLARE @IsTFSON BIT = 0;
 		SELECT TOP 1 @IsCRMDynamicsON = 1 
 		FROM   sys.server_principals SP
 		WHERE  SP.name = 'MSCRMSqlLogin'
@@ -239,19 +230,39 @@ MAXDOP (Max degree of parallelism) must be defined as 1 in both SQL Server 2000 
 		) OPTION  ( RECOMPILE );
 		--SharePoint
 		INSERT @DB_Exclude
-		EXEC sp_MSforeachdb '
-USE [?]
-SELECT TOP 1 DB_NAME()[DatabaseName]
-FROM   sys.database_principals DP
+		EXEC sp_MSforeachdb 'SELECT TOP 1 ''?'' [DatabaseName]
+FROM   [?].sys.database_principals DP
 WHERE  DP.type = ''R'' AND DP.name IN (N''SPDataAccess'',N''SPReadOnly'')
 OPTION  ( RECOMPILE );'
 		SELECT @IsSharePointON = 1 
 		WHERE EXISTS (SELECT TOP 1 1 FROM @DB_Exclude);
+		
+		--Team Foundation Server Databases(TFS)
+		IF DB_ID('Tfs_Configuration') IS NOT NULL
+		BEGIN
+			INSERT  @DB_tfs
+			EXEC sp_MSforeachdb 'SELECT TOP 1 ''?''[DatabaseName]
+FROM   [?].sys.database_principals DP
+WHERE  DP.type = ''R'' AND DP.name = ''TfsWarehouseDataReader''
+OPTION  ( RECOMPILE );'
+
+			INSERT  @DB_tfs
+			SELECT	CR.[DisplayName]
+			FROM	[Tfs_Configuration].[dbo].[tbl_CatalogResource] CR
+					INNER JOIN [Tfs_Configuration].[dbo].[tbl_CatalogResourceType] RC ON RC.Identifier = CR.ResourceType
+			WHERE	RC.DisplayName = 'Team Foundation Project Collection Database'
+					AND CR.[DisplayName] NOT IN(SELECT DatabaseName FROM @DB_tfs)
+			UNION	SELECT name FROM sys.databases WHERE [name] IN ('TFS_Configuration','TFS_Warehouse','TFS_Analysis') AND state = 0 AND name NOT IN(SELECT DatabaseName FROM @DB_tfs)
+			OPTION  ( RECOMPILE );
+		END
+		-----------------
 		SELECT 'SharePoint' [Software] ,@IsSharePointON [Status]
-		INTO #SR_Software
+		INTO	#SR_Software
 		UNION ALL SELECT 'BizTalk' [Software] ,@IsBizTalkON [Status]
 		UNION ALL SELECT 'CRMDynamics' [Software] ,@IsCRMDynamicsON [Status]
+		UNION ALL SELECT 'TFS' [Software] ,@IsTFSON [Status]
         OPTION  ( RECOMPILE );
+
 		INSERT @DebugError VALUES  ('Collect Software',NULL,DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
 	END TRY
 	BEGIN CATCH
@@ -346,7 +357,8 @@ OPTION  ( RECOMPILE );';
                 LF.NumberOfLogFiles,
 				CASE WHEN D.name IN ('BizTalkMsgBoxDB','BizTalkRuleEngineDb','SSODB','BizTalkHWSDb','BizTalkEDIDb','BAMArchive','BAMStarSchema','BAMPrimaryImport','BizTalkMgmtDb','BizTalkAnalysisDb','BizTalkTPMDb') THEN 1 ELSE 0 END [IsBizTalk],
 				CASE WHEN D.name IN ('MSCRM_CONFIG','OrganizationName_MSCRM') THEN 1 ELSE 0 END [IsCRMDynamics],
-				CASE WHEN D.name IN (SELECT DatabaseName FROM @DB_Exclude) THEN 1 ELSE 0 END [IsSharePoint]
+				CASE WHEN D.name IN (SELECT DatabaseName FROM @DB_Exclude) THEN 1 ELSE 0 END [IsSharePoint],
+				CASE WHEN D.name IN (SELECT DatabaseName FROM @DB_tfs) THEN 1 ELSE 0 END [IsTFS]
         INTO    #SR_Databases
         FROM    sys.databases D
                 INNER JOIN #VLFCountResults VL ON VL.DatabaseName COLLATE DATABASE_DEFAULT = D.name
@@ -616,8 +628,8 @@ OPTION(RECOMPILE);', N'@PhysicalMemory INT OUTPUT,
 -----------------------------------------------------------------------------------------------------------
 BEGIN TRY
 		SET @DebugStartTime = GETDATE();
-	IF OBJECT_ID('tempdb..#SL_LoginIssue') IS NOT NULL DROP TABLE #SL_LoginIssue;
-	CREATE TABLE #SL_LoginIssue
+	IF OBJECT_ID('tempdb..#SR_LoginIssue') IS NOT NULL DROP TABLE #SR_LoginIssue;
+	CREATE TABLE #SR_LoginIssue
 		(
 		  [Weak] NVARCHAR(2000) NOT NULL
 		);
@@ -633,7 +645,7 @@ BEGIN TRY
 		INSERT @alg VALUES ( 'SHA2_256', 1 );
 		INSERT @alg VALUES ( 'SHA2_512', 1 );
 
-		INSERT	#SL_LoginIssue
+		INSERT	#SR_LoginIssue
 		SELECT  'Login "' + SL.name + '" with algoritm ' + A.Algoritm + ' has very weak password.' [Weak]
 		FROM    master.sys.sql_logins SL
 				CROSS JOIN @alg A
@@ -818,7 +830,6 @@ BEGIN TRY
         EXEC master..xp_regread N'HKEY_LOCAL_MACHINE',
             N'HARDWARE\DESCRIPTION\System\CentralProcessor\0\',
             N'ProcessorNameString', @ProcessorNameString OUTPUT;
-
         IF OBJECT_ID('tempdb..#reg') IS NOT NULL
             EXEC ('Drop table #reg');
 
@@ -839,15 +850,12 @@ BEGIN TRY
                                 END; 
 
         SET @key = 'SYSTEM\CurrentControlSet\Services\' + @SQLServiceName;
-
-
 --MSSQLSERVER Service Account
         INSERT  INTO #reg
                 EXEC master..xp_regread 'HKEY_LOCAL_MACHINE', @key,
                     'ObjectName';
         UPDATE  #reg
         SET     keyname = @SQLServiceName; 
-
 --SQLSERVERAGENT Service Account
         DECLARE @AgentServiceName VARCHAR(8000);
         SELECT  @AgentServiceName = @@ServiceName;
@@ -855,10 +863,8 @@ BEGIN TRY
                                         THEN 'SQLSERVERAGENT'
                                         ELSE 'SQLAgent$' + @@ServiceName
                                 END; 
-
         SET @key = 'SYSTEM\CurrentControlSet\Services\'
             + @AgentServiceName; 
-
         INSERT  INTO #reg
                 EXEC master..xp_regread 'HKEY_LOCAL_MACHINE', @key,
                     'ObjectName';
@@ -866,14 +872,10 @@ BEGIN TRY
         UPDATE  #reg
         SET     keyname = @AgentServiceName
         WHERE   keyname = 'ObjectName';
-
-
 --Authentication Mode
         INSERT  INTO #reg
                 EXEC master..xp_loginconfig 'login mode';
 --EXEC master..xp_regread N'HKEY_LOCAL_MACHINE',N'Software\Microsoft\MSSQLServer\MSSQLServer',N'LoginMode'
-
-
         SELECT  @SQLSVRACC = value
         FROM    #reg
         WHERE   keyname = @SQLServiceName
@@ -890,14 +892,11 @@ BEGIN TRY
         FROM    #reg
         WHERE   keyname = 'login mode'
 		OPTION  ( RECOMPILE );
-
         DROP TABLE #reg;
-
         DECLARE @WindowsVersion VARCHAR(150);
         DECLARE @Processorcount VARCHAR(150);
         DECLARE @ProcessorType VARCHAR(150);
         DECLARE @PhysicalMemorySTR VARCHAR(150);
-
         IF OBJECT_ID('tempdb..#Internal') IS NOT NULL
            Drop table #Internal;
 
@@ -974,9 +973,9 @@ BEGIN TRY
         SELECT  CASE WHEN @Mask = 1 THEN CONVERT(NVARCHAR(200),'SQLServerMask')
 				ELSE ISNULL(CONVERT(NVARCHAR(200), @@SERVERNAME),
                         CONVERT(NVARCHAR(200), SERVERPROPERTY('MachineName'))) 
-				END ServerName ,
+				END [ServerName] ,
                 CASE WHEN @Mask = 1 THEN CONVERT(NVARCHAR(200),'MachineNameMask')
-				ELSE CONVERT(NVARCHAR(200), SERVERPROPERTY('MachineName')) END MachineName ,
+				ELSE CONVERT(NVARCHAR(200), SERVERPROPERTY('ComputerNamePhysicalNetBIOS')) END [MachineName] ,
                 CASE WHEN @Mask = 1 THEN CONVERT(NVARCHAR(200),'ServiceNameMask')
 				ELSE @@ServiceName END Instance ,
                 @Processorcount AS ProcessorCount ,
@@ -1109,19 +1108,14 @@ OPTION  ( RECOMPILE );';
 		OPTION  ( RECOMPILE ); 
         INSERT #SR_reg ( [Service], InstanceNames,keyname, [value] )
         SELECT 'SQL Server Engine',@InstanceNames,'Account Name'  ,[value] FROM @reg;
-
              -------------------------------------------------------------------------------	
-
 		SET @PS = 'powershell.exe -noprofile -command "Get-Service | Where-Object {$_.DisplayName -like ''SQL Server (*'' -and $_.Name -eq ''' + @SQLServiceNamei + '''}"';
-
 		DELETE FROM @output;
         INSERT @output EXEC xp_cmdshell @PS;
-
 		IF LEN(@SQLServiceNamei) > 15
 		BEGIN
 			SET @SQLServiceNamei = @InstanceNames;
 		END
-
 		DELETE FROM @output WHERE line IS NULL OR line NOT LIKE '%' + @SQLServiceNamei + '%'
 		
         INSERT #SR_reg ( [Service], InstanceNames,keyname, [value] )
@@ -1142,20 +1136,17 @@ OPTION  ( RECOMPILE );';
                     ELSE SELECT @Ver = SUBSTRING(@Ver, 1, CHARINDEX('.', @Ver) - 1)
              END
                     
-
              SET @keyi = CASE WHEN @InstanceNames = 'MSSQLSERVER'
                                     THEN 'SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL' + @Ver + '.' + @InstanceNames + '\MSSQLServer\CurrentVersion'
                                     ELSE 'SOFTWARE\Wow6432Node\Microsoft\Microsoft SQL Server\' + @InstanceNames + '\MSSQLServer\CurrentVersion'
                                 END; 
              DELETE FROM @reg;
              DELETE FROM @Tempreg; 
-
         INSERT  INTO @Tempreg
              EXECUTE xp_regread 'HKEY_LOCAL_MACHINE', @keyi, 'CurrentVersion';
 			 
              SELECT @Ver = value
              FROM   @Tempreg;
-
              SET @ComptabilityLevel = SUBSTRING(@Ver, 1, CHARINDEX('.', @Ver) - 1) + SUBSTRING(SUBSTRING(@Ver, CHARINDEX('.', @Ver)+1,LEN(@Ver) ), 1, 1);
              IF ( SUBSTRING(@Ver, 1, CHARINDEX('.', @Ver) - 1) = '10' )
              BEGIN
@@ -1165,10 +1156,8 @@ OPTION  ( RECOMPILE );';
              END
    
              ELSE SELECT @Ver = SUBSTRING(@Ver, 1, CHARINDEX('.', @Ver) - 1)
-
 ----------------------------------------------------------------------------------------------------------------------------------
              SET @key = 'SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL' + @Ver + '.' + @InstanceNames + '\Setup'
-
 			 INSERT   @reg
              EXECUTE xp_regread 'HKEY_LOCAL_MACHINE', @key, 'PatchLevel';
 			 
@@ -1181,7 +1170,6 @@ OPTION  ( RECOMPILE );';
              SET @keyi = 'SOFTWARE\Microsoft\Microsoft SQL Server\MSSQL' + @Ver + '.' + @InstanceNames + '\Setup'
              INSERT @reg
              EXECUTE xp_regread 'HKEY_LOCAL_MACHINE', @keyi, 'Edition';
-
              INSERT #SR_reg ( [Service], InstanceNames,keyname, [value] )
              SELECT 'SQL Server Engine Edition',@InstanceNames,'Edition Installed' ,value FROM @reg;
 			 
@@ -1190,33 +1178,24 @@ OPTION  ( RECOMPILE );';
              --Error Log file
              DELETE FROM @reg;
         SET @keyi = N'Software\Microsoft\Microsoft SQL Server\MSSQL' + @Ver + '.' + @InstanceNames + '\MSSQLServer'
-
              INSERT @reg
         EXECUTE xp_regread N'HKEY_LOCAL_MACHINE',@keyi, N'NumErrorLogs';
-
              INSERT #SR_reg ( [Service], InstanceNames,keyname, [value] )
              SELECT 'SQL Server Number of Error Log files',@InstanceNames,'Number Error Logs' ,value FROM @reg;     
 			 
 		         
 ----------------------------------------------------------------------------------------------------------------------------------
              DELETE FROM @reg;
-
-
              SET @key = 'SOFTWARE\Microsoft\Microsoft SQL Server\' + @ComptabilityLevel;
-
         INSERT @reg
              EXECUTE xp_regread 'HKEY_LOCAL_MACHINE', @key, 'CustomerFeedback';
-
              INSERT #SR_reg ( [Service], InstanceNames,keyname, [value] )
              SELECT 'SQL Server Customer Feedback',@InstanceNames,'Customer Feedback Enabled' ,value FROM @reg;
              DELETE FROM @reg;
-
         INSERT @reg
              EXECUTE xp_regread 'HKEY_LOCAL_MACHINE', @key, 'EnableErrorReporting';
-
              INSERT #SR_reg ( [Service], InstanceNames,keyname, [value] )
              SELECT 'SQL Server Error Reporting',@InstanceNames,'Error Reporting Enabled' ,value FROM @reg;
-
 			 
 		
 ----------------------------------------------------------------------------------------------------------------------------------
@@ -1225,7 +1204,6 @@ OPTION  ( RECOMPILE );';
                                         THEN 'SQLSERVERAGENT'
                                         ELSE 'SQLAgent$' + @InstanceNames
                                 END; 
-
         SET @keyi = 'SYSTEM\CurrentControlSet\Services\' + @AgentServiceNamei; 
              
         DELETE FROM @reg  
@@ -1306,14 +1284,11 @@ OPTION  ( RECOMPILE );';
   
   CLOSE crInctances
   DEALLOCATE crInctances
-
-
   IF @Mask = 1
   BEGIN
 	UPDATE	#SR_reg 
 	SET		InstanceNames = 'ServiceNameMask'
 	WHERE	CurrentInstance = 1;
-
 	DECLARE @InstanceNamesCount INT;
 	SELECT	@InstanceNamesCount = COUNT(DISTINCT InstanceNames)
 	FROM	#SR_reg
@@ -1701,13 +1676,11 @@ OPTION  ( RECOMPILE );';
 		WHERE  j.enabled = 1
 		ORDER BY JSS.[SubSystem],j.name,js.step_id;
 	END
-
 		INSERT	#SR_JobOut
 		SELECT	[JobName] ,[StepID] , [StepName] ,[Outcome] ,[LastRunDatetime] ,[SubSystem],REPLACE([Message],@SQLAGTACC,'ADLoginNameMask'),[Caller]--@SQLAGTACC
 		FROM	#JobStatus
 		WHERE	Outcome LIKE '%Failed%' OR Outcome LIKE '%Error%'
 		OPTION(RECOMPILE);
-
 		DROP TABLE #JobStatus;
 	
 		INSERT	#SR_Jobs
@@ -1719,8 +1692,6 @@ OPTION  ( RECOMPILE );';
 		WHERE	S.owner_sid != '0x01'
 				AND S.enabled = 1
 		OPTION(RECOMPILE);
-
-
 		INSERT @DebugError VALUES  ('Jobs Info',NULL,DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
 	END TRY
 	BEGIN CATCH
@@ -1809,9 +1780,95 @@ OPTION  ( RECOMPILE );';
 		INSERT @DebugError VALUES  ('Drive Latency',ERROR_MESSAGE(),DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
 	END CATCH
 --------------------------------------------------------------------------------------------------------
+BEGIN TRY
+		SET @DebugStartTime = GETDATE();
+		IF @debug = 1 RAISERROR ('Collect Node Compare',0,1) WITH NOWAIT;
+		IF OBJECT_ID('tempdb..#SR_RemoteServer') IS NULL
+			CREATE TABLE #SR_RemoteServer([Server] sysname NOT NULL,Property VARCHAR(4000),[Value] VARCHAR(4000));
+		DELETE FROM #SR_RemoteServer;
+		DECLARE @RemoteServer VARCHAR(4000) ;
+		DECLARE @RemoteProp TABLE([Server] sysname NOT NULL,Property VARCHAR(4000),[Value] VARCHAR(4000));
+		DECLARE @PathcmdFile NVARCHAR(2048);
+		DECLARE @NoOutput TABLE (ID INT);
+		DECLARE @files TABLE (ID int IDENTITY(1,1), [FileName] VARCHAR(100))
+		IF OBJECT_ID('tempdb..#Nodes') IS NOT NULL
+			DROP TABLE #Nodes;
+			CREATE TABLE #Nodes(NodeName sysname,[Type] sysname);
+	
+			INSERT	#Nodes
+			SELECT	NodeName,'SQL Cluster' [Type]
+			FROM	sys.dm_os_cluster_nodes;
+
+			if SERVERPROPERTY('IsHadrEnabled') = 1
+				EXEC('INSERT    #Nodes
+SELECT member_name,''AlwaysOn''
+FROM   sys.dm_hadr_cluster_members
+WHERE	member_type = 0;');
+		IF EXISTS(SELECT COUNT(1) FROM #Nodes HAVING COUNT(1) > 1)
+		BEGIN
+
+			DECLARE cuNode CURSOR LOCAL FAST_FORWARD READ_ONLY FOR 
+			SELECT	NodeName
+			FROM	#Nodes
+			OPEN cuNode
+
+			FETCH NEXT FROM cuNode INTO @RemoteServer
+
+			WHILE @@FETCH_STATUS = 0
+			BEGIN
+				DELETE FROM @output;
+				DELETE FROM @RemoteProp;
+				--By powershell
+				SET @Command = 'powershell.exe -noprofile -command "$servername = ''' + @RemoteServer + '''; invoke-command -computer $servername -scriptblock {[array]$wmiinfo = Get-WmiObject Win32_Processor; $cpu = ($wmiinfo[0].name);  $cores = ( $wmiinfo | Select SocketDesignation | Measure-Object ).count;  $NumberOfLogicalProcessors = ( $wmiinfo[0].NumberOfLogicalProcessors); $obj = New-Object Object; $obj | Add-Member Noteproperty CPU -value $cpu; $obj | Add-Member Noteproperty Cores -value $cores; $obj | Add-Member Noteproperty NumberOfLogicalProcessors -value $NumberOfLogicalProcessors; Write-Host ($obj | Format-List | Out-String);}"';
+
+				INSERT @output
+				EXEC master.sys.xp_cmdshell @Command;
+				IF exists(select top 1 1 from @output WHERE line like '%is not recognized as an internal or external command%')
+				begin
+					   delete from @output;
+					   SET @Command = '%SYSTEMROOT%\System32\WindowsPowerShell\v1.0\powershell.exe -noprofile -command "$servername = ''' + @RemoteServer + '''; invoke-command -computer $servername -scriptblock {[array]$wmiinfo = Get-WmiObject Win32_Processor; $cpu = ($wmiinfo[0].name);  $cores = ( $wmiinfo | Select SocketDesignation | Measure-Object ).count;  $NumberOfLogicalProcessors = ( $wmiinfo[0].NumberOfLogicalProcessors); $obj = New-Object Object; $obj | Add-Member Noteproperty CPU -value $cpu; $obj | Add-Member Noteproperty Cores -value $cores; $obj | Add-Member Noteproperty NumberOfLogicalProcessors -value $NumberOfLogicalProcessors; Write-Host ($obj | Format-List | Out-String);}"';
+
+					   INSERT @output
+					   EXEC master.sys.xp_cmdshell @Command;
+
+				END
+				IF NOT EXISTS(SELECT TOP 1 1 FROM @output WHERE line = 'The system cannot find the path specified.')
+				INSERT	@RemoteProp
+				SELECT	@RemoteServer [Server],
+						LEFT(line,CHARINDEX(' ',line))[Property],
+						RIGHT(line,CASE CHARINDEX(':',REVERSE(line)) WHEN 0 THEN 0 ELSE CHARINDEX(':',REVERSE(line))-1 END)[Value]
+				FROM	@output
+				WHERE	line IS NOT NULL ;
+
+
+
+			
+				IF EXISTS(SELECT TOP 1 1 FROM @RemoteProp)
+				BEGIN
+					INSERT	#SR_RemoteServer
+					SELECT	Server ,
+							Property ,
+							Value
+					FROM	@RemoteProp
+				END
+				DELETE FROM @RemoteProp;
+				FETCH NEXT FROM cuNode INTO @RemoteServer;
+			END
+
+			CLOSE cuNode;
+			DEALLOCATE cuNode;
+		END
+
+
+		DROP TABLE #Nodes;
+		INSERT @DebugError VALUES  ('Node Compare',NULL,DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
+	END TRY
+	BEGIN CATCH
+		INSERT @DebugError VALUES  ('Node Compare',ERROR_MESSAGE(),DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
+	END CATCH
+--------------------------------------------------------------------------------------------------------
 	BEGIN TRY
 		SET @DebugStartTime = GETDATE();
-
         SET @PS = 'powershell.exe -noprofile -command "get-wmiobject win32_diskpartition | select name, startingoffset | foreach{$_.name+''|''+$_.startingoffset/1024+''*''}"';
 ----------------------------------------------
         BEGIN TRY
@@ -1850,7 +1907,6 @@ OPTION  ( RECOMPILE );';
         SET @sql = 'wmic volume GET Caption, BlockSize';--inserting disk name, total space and free space value in to temporary table
 	
         INSERT  @output EXEC xp_cmdshell @sql;
-
         DELETE  FROM @output
         WHERE   line IS NULL
                 OR line IN ( '
@@ -1862,16 +1918,13 @@ OPTION  ( RECOMPILE );';
             (
                 DriveLeter CHAR(3) NOT NULL
             );
-
         INSERT  #DriveLeter
                 SELECT	DISTINCT
                         LEFT(MF.physical_name, 3)
                 FROM    sys.master_files MF
 		OPTION(RECOMPILE);
-
         IF OBJECT_ID('tempdb..#SR_BlockSize') IS NOT NULL
             DROP TABLE #SR_BlockSize;
-
         SELECT  DL.DriveLeter ,
                 RTRIM(LTRIM(REPLACE(O.line, DL.DriveLeter, ''))) [BlockSize]
         INTO    #SR_BlockSize
@@ -1885,14 +1938,11 @@ OPTION  ( RECOMPILE );';
         IF OBJECT_ID('tempdb..#DrvLetter') IS NOT NULL
             DROP TABLE #DrvLetter;
 		CREATE TABLE #DrvLetter (Drive VARCHAR(500))
-
 		INSERT #DrvLetter
 		EXEC xp_cmdshell 'wmic volume where drivetype="3" get caption, freespace, capacity, label'
-
 		DELETE FROM #DrvLetter
 		WHERE	Drive IS NULL OR len(Drive) < 4 OR Drive LIKE '%Capacity%'
 				OR Drive LIKE  '%\\%\Volume%'
-
 		SELECT	[Drive] = LEFT(LTRIM(a.[Line]),CHARINDEX(' ',LTRIM(a.[Line]))),
 				CAST(LEFT(Drive,CHARINDEX(' ',Drive)) AS REAL)/1024/1024 [TotalSize]
 				,Freesize = LEFT(LTRIM(b.[Line]),CHARINDEX(' ',LTRIM(b.[Line])))
@@ -1918,7 +1968,6 @@ OPTION  ( RECOMPILE );';
 		  volume_mount_point CHAR(3) ,
 		  [available_bytes] BIGINT ,
 		  [total_bytes] BIGINT)
-
 		IF SERVERPROPERTY('productversion') > '10.50.2500.0'
 		BEGIN
 			INSERT #VolumDiskInfo
@@ -1939,13 +1988,10 @@ sys.dm_os_volume_stats - Returns information about the operating system volume (
 				RECONFIGURE;
 				SET @olea = 1;
 			END;
-
 			IF OBJECT_ID('tempdb..#_DriveSpace') IS NOT NULL
 				DROP TABLE #_DriveSpace;
-
 			IF OBJECT_ID('tempdb..#_DriveInfo') IS NOT NULL
 				DROP TABLE #_DriveInfo;
-
 			DECLARE @Result INT ,
 				@objFSO INT ,
 				@Drv INT ,
@@ -1953,71 +1999,51 @@ sys.dm_os_volume_stats - Returns information about the operating system volume (
 				@Size VARCHAR(50) ,
 				@Free VARCHAR(50) ,
 				@Label VARCHAR(10);
-
 			CREATE TABLE #_DriveSpace (
 				  driveletter CHAR(1) NOT NULL ,
 				  FreeSpace VARCHAR(10) NOT NULL);
-
 			CREATE TABLE #_DriveInfo(
 				  driveletter CHAR(1) ,
 				  TotalSpace BIGINT ,
 				  FreeSpace BIGINT ,
 				  Label VARCHAR(10));
-
 			INSERT #_DriveSpace EXEC master.dbo.xp_fixeddrives;
-
 			-- Iterate through drive letters.
 			DECLARE curdriveletters CURSOR LOCAL FAST_FORWARD
 			FOR
 				SELECT  driveletter
 				FROM    #_DriveSpace;
-
 			DECLARE @driveletter CHAR(1);
 			OPEN curdriveletters;
-
 			FETCH NEXT FROM curdriveletters INTO @driveletter;
 			WHILE ( @@fetch_status <> -1 )
 				BEGIN
 					IF ( @@fetch_status <> -2 )
 						BEGIN
-
 							SET @cDrive = 'GetDrive("' + @driveletter + '")'; 
-
 							EXEC @Result = sp_OACreate 'Scripting.FileSystemObject', @objFSO OUTPUT; 
-
 							IF @Result = 0 EXEC @Result = sp_OAMethod @objFSO, @cDrive, @Drv OUTPUT; 
-
 							IF @Result = 0 EXEC @Result = sp_OAGetProperty @Drv, 'TotalSize', @Size OUTPUT; 
-
 							IF @Result = 0 EXEC @Result = sp_OAGetProperty @Drv, 'FreeSpace', @Free OUTPUT; 
-
 							IF @Result = 0 EXEC @Result = sp_OAGetProperty @Drv, 'VolumeName', @Label OUTPUT; 
-
 							IF @Result <> 0 EXEC sp_OADestroy @Drv; 
 							EXEC sp_OADestroy @objFSO; 
-
 							INSERT  INTO #_DriveInfo
 							VALUES  ( @driveletter, @Size, @Free, @Label );
-
 						END;
 					FETCH NEXT FROM curdriveletters INTO @driveletter;
 				END;
-
 			CLOSE curdriveletters;
 			DEALLOCATE curdriveletters;
-
 			INSERT	#VolumDiskInfo
 			SELECT  driveletter + ':\' AS volume_mount_point ,
 					FreeSpace AS [available_bytes],
 					TotalSpace AS [total_bytes] 
 			FROM    #_DriveInfo
 			ORDER BY [driveletter] ASC;	
-
 			DROP TABLE #_DriveSpace;
 			DROP TABLE #_DriveInfo;
 		END
-
-
         SELECT  vs.volume_mount_point ,
 				MIN(CAST(vs.available_bytes AS FLOAT)) available_bytes ,
 				MAX(CAST(vs.total_bytes AS FLOAT)) total_bytes,
@@ -2049,16 +2075,12 @@ sys.dm_os_volume_stats - Returns information about the operating system volume (
 		--#VersionsBugs
 		DELETE FROM @output;
 		DECLARE @cmdshellcommand VARCHAR(255)
-
 		SET @cmdshellcommand = 'dir "%SystemRoot%\system32\config\software"'
-
 		INSERT INTO @output
 		EXEC master.dbo.xp_cmdshell @cmdshellcommand;
-
 		CREATE TABLE #SR_VersionBug(Version NVARCHAR(30) NOT NULL,
 		Detail NVARCHAR(MAX) NULL,
 		IntDetail INT NULL);
-
 		INSERT	#SR_VersionBug
 		SELECT	CONVERT(NVARCHAR(30),SERVERPROPERTY('productversion')) Version,
 				'msiexec' Detail,
@@ -2082,7 +2104,6 @@ sys.dm_os_volume_stats - Returns information about the operating system volume (
 		SET @DebugStartTime = GETDATE();
 		IF @debug = 1 RAISERROR ('Collect Database Files',0,1) WITH NOWAIT;
 		DECLARE @cmdSQL NVARCHAR(MAX);  
-
 		IF OBJECT_ID('tempdb..##Results') IS NOT NULL
 			DROP TABLE ##Results;
 		IF OBJECT_ID('tempdb..#SR_DatabaseFiles') IS NULL 
@@ -2117,7 +2138,6 @@ SELECT	DB_NAME(),
 FROM	sys.database_files fil
 		LEFT JOIN sys.data_spaces fg ON fil.data_space_id = fg.data_space_id
 OPTION(RECOMPILE);'   
-
 	--Run the command against each database (IGNORE OFF-LINE DB)
 	EXEC sp_MSforeachdb @cmdSQL   
 	INSERT	#SR_DatabaseFiles
@@ -2166,7 +2186,6 @@ WHERE	sp.SID IS NULL
 		AND dp.type_desc = ''SQL_USER''
 		AND dp.SID IS NOT NULL
 OPTION(RECOMPILE);';
-
 IF OBJECT_ID('tempdb..#DBCCRes') IS NULL 
 		CREATE TABLE #DBCCRes
         (
@@ -2224,7 +2243,6 @@ IF OBJECT_ID('tempdb..#temp') IS NOT NULL
     DEALLOCATE dbccpage;
 	
     DROP TABLE #temp;
-
 	IF OBJECT_ID('tempdb..#Backup') IS NOT NULL DROP TABLE #Backup;
 		CREATE TABLE #Backup
                 (
@@ -2233,12 +2251,10 @@ IF OBJECT_ID('tempdb..#temp') IS NOT NULL
                     [Type] CHAR(1) ,
                     physical_device_name NVARCHAR(1000)
                 );
-
 	IF OBJECT_ID('tempdb..#WitchDBtoCheck') IS NOT NULL DROP TABLE #WitchDBtoCheck;
 	CREATE TABLE #WitchDBtoCheck(DatabaseName sysname NOT NULL,
 	LastBackUpTime DATETIME NOT NULL,
 	[Type] CHAR(1) NULL);
-
 	
 	SELECT @cmd = N'
 INSERT	#WitchDBtoCheck
@@ -2256,9 +2272,7 @@ WHERE   sdb.database_id NOT IN (2,DB_ID())
 		' + CASE WHEN @@VERSION LIKE 'Microsoft SQL Server 201%' THEN N'AND sys.fn_hadr_backup_is_preferred_replica (sdb.name) != 0' ELSE N'' END+ N'
 GROUP BY  sdb.name , bus.type
 OPTION(RECOMPILE);';
-
 	EXEC sp_executesql @cmd;
-
 	INSERT #Backup
     SELECT  t1.DatabaseName ,
             CONVERT(VARCHAR(50), t1.LastBackUpTime, 101) AS LastBackUpTime ,
@@ -2274,7 +2288,6 @@ OPTION(RECOMPILE);';
                             LEFT JOIN msdb..backupmediafamily bmf ON bu.media_set_id = bmf.media_set_id
                     ) t2 ON t1.DatabaseName = t2.database_name
                             AND t1.LastBackUpTime = t2.BackupDate;
-
 SELECT	CONVERT(sysname,'Backup') [Type],CONVERT(sysname,DatabaseName) [DatabaseName],CONVERT(NVARCHAR(max),'Backup ' + 
 		CASE WHEN T.[Type] IS NULL THEN 'has yet run on this DB' ELSE 
 		CASE T.[Type] 
@@ -2283,7 +2296,6 @@ SELECT	CONVERT(sysname,'Backup') [Type],CONVERT(sysname,DatabaseName) [DatabaseN
 			WHEN 'I' THEN 'type - Data-Diff' 
 			ELSE 'N' 				
 			END  +' was last backedup at - '+ 
-
 		CASE WHEN LastBackUpTime ='01/01/1900'
 			then 'never'
 			else ISNULL(LastBackUpTime,'')
@@ -2314,31 +2326,38 @@ UNION ALL
 SELECT 'PAGE VERIFY'[Type],db.name [Database Name],N'Change PAGE_VERIFY to CHECKSUM.' [Note],CONVERT(NVARCHAR(MAX),NULL)[Link]
 FROM	sys.databases db
 WHERE	db.state = 0
-		and db.is_read_only = 0
-		and db.page_verify_option != 2
-		and db.database_id > 4
+		AND db.is_read_only = 0
+		AND db.page_verify_option != 2
+		AND db.database_id > 4
 UNION ALL
-SELECT 'File Growth'[Type],db.name as database_name,N'Change database file growth to Megabyte.',CONVERT(NVARCHAR(MAX),NULL)[Link]
-FROM   sys.master_files mf (NOLOCK)
-       INNER JOIN sys.databases db (NOLOCK) on mf.database_id = db.database_id
-WHERE  is_percent_growth=1
+SELECT  'File Growth'[Type],db.name as [Database Name],N'Change database file growth to Megabyte.',CONVERT(NVARCHAR(MAX),NULL)[Link]
+FROM    sys.databases db
+        CROSS JOIN (SELECT TOP 1 1 [Ex] FROM sys.master_files mf WHERE mf.database_id = db.database_id AND mf.is_percent_growth = 1)mf
+WHERE   db.state = 0
+		AND db.is_read_only = 0
+UNION ALL
+SELECT  'File Growth'[Type],db.name as [Database Name],N'Change database file growth more then 1 Megabyte.',CONVERT(NVARCHAR(MAX),NULL)[Link]
+FROM    sys.databases db
+        CROSS JOIN (SELECT TOP 1 1 [Ex] FROM sys.master_files mf WHERE mf.database_id = db.database_id AND mf.is_percent_growth = 0 AND mf.growth = 128)mf
+WHERE   db.state = 0
+		AND db.is_read_only = 0
 UNION ALL
 SELECT  'AUTO SHRINK'[Type],db.name,N'Turn off AUTO_SHRINK ' AS [Note],CONVERT(NVARCHAR(MAX),NULL)[Link]
 FROM    sys.databases db
 WHERE	db.state = 0
-		and db.is_read_only = 0
+		AND db.is_read_only = 0
 		AND is_auto_shrink_on = 1
 UNION ALL
 SELECT  'CURSOR_DEFAULT'[Type],db.name,N'Change CURSOR_DEFAULT to LOCAL' AS [Note],CONVERT(NVARCHAR(MAX),NULL)[Link]
 FROM    sys.databases db
 where	db.state = 0
-		and db.is_read_only = 0
+		AND db.is_read_only = 0
 		AND is_local_cursor_default = 0
 UNION ALL
 SELECT  'Auto Create Statistics'[Type],db.name,N'Turn on AUTO_CREATE_STATISTICS' AS [Note],CONVERT(NVARCHAR(MAX),NULL)[Link]
 FROM    sys.databases db
 where	db.state = 0
-		and db.is_read_only = 0
+		AND db.is_read_only = 0
 		AND is_auto_create_stats_on = 0
 		AND db.name NOT IN(SELECT DatabaseName FROM	@DB_Exclude)
 UNION ALL
@@ -2363,7 +2382,12 @@ where	db.state = 0
 		AND is_auto_update_stats_on = 1
 		AND db.name IN(SELECT DatabaseName FROM	@DB_Exclude)
 UNION ALL 
-SELECT 'User objects in system DB' [Type],'master' name,N'system DB have ' + CONVERT(VARCHAR(25),COUNT_BIG(1)) + ' "' + CASE type 
+SELECT	'Recovery Model' [Type],db.name [name],'Set the recovery model of the Model database to SIMPLE'[Note],'https://dbaeyes.wordpress.com/2011/08/18/hooray-you-finished-installing-sql-server-now-what/'[Link] 
+FROM	sys.databases db
+WHERE	db.database_id = 3
+		AND db.recovery_model = 1
+UNION ALL 
+SELECT 'User objects in system DB' [Type],'master' [name],N'system DB have ' + CONVERT(VARCHAR(25),COUNT_BIG(1)) + ' "' + CASE type 
               WHEN 'P' THEN 'user stored procedures' 
               WHEN 'U' THEN 'user tables' 
               WHEN 'V' THEN 'views' 
@@ -2380,20 +2404,16 @@ GROUP BY type_desc,type
 HAVING  COUNT_BIG(1)  > 10
 ORDER BY 2,1
 OPTION(RECOMPILE);
-
  
-
  -- Memory Optimize Tables Check by Maxim Shmidt(NAYA)
     IF ( SELECT SERVERPROPERTY('ProductMajorVersion')) >= '12'
     BEGIN   
-
         IF OBJECT_ID('tempdb..#DBName') IS NOT NULL DROP TABLE #DBName;
         CREATE TABLE #DBName
             (
                 ID INT IDENTITY(1, 1) ,
                 [Name] NVARCHAR(128)
             );
-
         SET @cmd = ( SELECT 'union all 
 		SELECT TOP 1 ''' + D.name + ''' as DatabaseName
 		FROM ' + QUOTENAME(D.name) + '.sys.tables as t
@@ -2405,13 +2425,10 @@ OPTION(RECOMPILE);
         FOR XML PATH('') ,
                 TYPE).value('substring((./text())[1], 13)',
                             'nvarchar(max)');
-
 		--print @cmd
         INSERT  INTO #DBName EXEC (@cmd);
-
         IF EXISTS ( SELECT TOP 1 1 FROM #DBName )
         BEGIN 
-
             DECLARE @stop INT; 
 			SELECT TOP 1 @stop = ID
             FROM      #DBName
@@ -2419,7 +2436,6 @@ OPTION(RECOMPILE);
 			DECLARE @count INT = 1 ;
             WHILE @count < @stop
             BEGIN 
-
 				
                 SELECT  @cmd = N'
 INSERT #SR_DBProp
@@ -2450,10 +2466,7 @@ OPTION(RECOMPILE);'
             FROM    #DBName DB
             WHERE   DB.ID = @count
 			OPTION(RECOMPILE);
-
                 EXEC sys.sp_executesql @cmd;
-
-
                 SELECT  @cmd = N'
 INSERT	#SR_DBProp
 SELECT  t.[Type], t.[dbName],t.[Message],t.[Link]
@@ -2483,9 +2496,7 @@ OPTION(RECOMPILE);'
                 FROM    #DBName DB
                 WHERE   DB.ID = @count
 				OPTION(RECOMPILE);
-
                 EXEC sys.sp_executesql @cmd;
-
                 SELECT  @cmd = N'
 INSERT #SR_DBProp
 SELECT TOP 1 ''Memory-Optimized DB'' AS [Type] ,''' + DB.Name + '''[dbName], N''The database "' + DB.Name
@@ -2503,15 +2514,11 @@ OPTION(RECOMPILE);'
                 FROM    #DBName DB
                 WHERE   DB.ID = @count
 				OPTION(RECOMPILE);
-
                 EXEC sys.sp_executesql @cmd;
-
                 SET @count = @count + 1;
-
             END; 
 			
         END; 
-
 	END; 
 		INSERT @DebugError VALUES  ('Database Error',NULL,DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
 	END TRY
@@ -2531,7 +2538,6 @@ FROM    sys.availability_groups AS ag
         INNER JOIN sys.dm_hadr_availability_replica_states AS ar_state ON ar.replica_id = ar_state.replica_id
         INNER JOIN sys.dm_hadr_database_replica_states dr_state ON ag.group_id = dr_state.group_id AND dr_state.replica_id = ar_state.replica_id
               INNER JOIN sys.databases D ON D.database_id = dr_state.database_id
-
 WHERE  (D.name LIKE ''Search[_]Service[_]Application[_]DB[_]%''
               OR D.name LIKE ''SharePoint[_]Admin[_]Content%''
               OR D.name LIKE ''SharePoint[_]Config%''
@@ -2591,7 +2597,6 @@ OPTION(RECOMPILE);');
 	
     IF ( SELECT SERVERPROPERTY(''ProductMajorVersion'')) >= ''11''
     SET @Innercmd = @Innercmd + '' Union All'' + CHAR(13) + ''Select ''''MaxIdentity'''' [Type],DB_NAME() DB, Schema_Name(S.schema_id) + ''''.'''' + S.name Object, ''''Sequence'''' ObjectType, S.current_value MaxIdentity, S.maximum_value UpperLimit From	sys.sequences S Inner Join sys.types Tp On S.system_type_id=Tp.system_type_id And S.user_type_id=Tp.user_type_id Where	Tp.name=''''int'''''';
-
     SET @Innercmd = ''With T As'' +  CHAR(13) +  ''('' +  @Innercmd + '')'' + CHAR(13) +
                       ''INSERT #SR_DBProp
 					  Select [Type],DB,''''Table '''' + T.Object + '''' on '''' + ObjectType + '''' limit identity is '''' + convert(varchar(50),MaxIdentity) + ''''/'''' +  convert(varchar(50),UpperLimit), NULL [Link] From T 
@@ -2599,7 +2604,6 @@ OPTION(RECOMPILE);');
 					  Order By Cast(MaxIdentity As Float)/Cast(UpperLimit As Float) Desc;'';
 	EXEC(@Innercmd);
 	';
-
 	EXEC (@cmd);
             FETCH NEXT FROM cuMaxIdent INTO @DBName;
         END;
@@ -2662,7 +2666,6 @@ END
 	IF OBJECT_ID('tempdb..#SR_HADRState') IS NOT NULL
 		DROP TABLE #SR_HADRState;
 CREATE TABLE #SR_HADRState(ID INT NOT NULL,msg NVARCHAR(MAX) NOT NULL);
-
 IF @MajorVersion > 1050 AND SERVERPROPERTY('IsHadrEnabled') = 1--2012
 BEGIN
 EXEC('INSERT	#SR_HADRState
@@ -2693,7 +2696,6 @@ WHERE	type = 2
 		AND state != 0 --ONLINE
 OPTION(RECOMPILE);');
 END
-
 IF  @Mask = 1
 BEGIN
 	CREATE TABLE #HADR_Replica(member_name sysname,ReplicaID varchar(10))
@@ -2701,7 +2703,6 @@ BEGIN
 SELECT	member_name,''Replica'' + CONVERT(VARCHAR(5),ROW_NUMBER() OVER(ORDER BY member_name ASC)) ReplicaID
 FROM	sys.dm_hadr_cluster_members
 OPTION(RECOMPILE);');
-
 	UPDATE	hadr
 	SET		msg = REPLACE(msg,member_name,ReplicaID)
 	FROM	#SR_HADRState hadr
@@ -2741,7 +2742,6 @@ CREATE TABLE #SR_HADR(
 	,end_of_log_lsn	Numeric(25,0)	null
 	,last_commit_lsn	Numeric(25,0)	null
 	,last_commit_time	datetime	NULL);
-
 IF @MajorVersion > 1050 AND SERVERPROPERTY('IsHadrEnabled') = 1--2012
 BEGIN
 	EXEC('INSERT	#SR_HADR
@@ -2821,7 +2821,6 @@ WHERE   ar.replica_server_name = @@SERVERNAME
 OPTION(RECOMPILE);
 	')
 END
-
 --------------------------------------------------------------------------------------------------------
 IF @debug = 1 
 BEGIN
@@ -2847,18 +2846,14 @@ CREATE TABLE #SR_Mirror
 ) 
 /* declare variables */
 DECLARE @DBMirror sysname
-
 DECLARE curDBMirror CURSOR LOCAL FAST_FORWARD READ_ONLY FOR 
 SELECT	d.name
 FROM	sys.databases d
 		inner join sys.database_mirroring m on d.database_id = m.database_id
 WHERE	m.mirroring_guid IS NOT NULL
 OPTION(RECOMPILE);
-
 OPEN curDBMirror
-
 FETCH NEXT FROM curDBMirror INTO @DBMirror
-
 WHILE @@FETCH_STATUS = 0
 BEGIN
     
@@ -2866,10 +2861,8 @@ BEGIN
 	EXEC msdb.sys.sp_dbmmonitorresults @DBMirror, 0,1 
     FETCH NEXT FROM curDBMirror INTO @DBMirror
 END
-
 CLOSE curDBMirror
 DEALLOCATE curDBMirror
-
 --------------------------------------------------------------------------------------------------------
 IF @debug = 1 RAISERROR ('Collect Maintplan Plans Logs',0,1) WITH NOWAIT;
     DECLARE @line varchar(400)
@@ -2877,31 +2870,24 @@ IF @debug = 1 RAISERROR ('Collect Maintplan Plans Logs',0,1) WITH NOWAIT;
     SET     @1MB = 1024 * 1024;
     DECLARE @1KB    DECIMAL;
     SET     @1KB = 1024 ;
-
 	---------------------------------------------------------------------------------------------
 	-- Temp tables creation
 	---------------------------------------------------------------------------------------------
 	IF OBJECT_ID('tempdb..#MPLtempFilePaths') IS NOT NULL DROP TABLE #MPLtempFilePaths;
 	IF OBJECT_ID('tempdb..#MPLtempFileInformation') IS NOT NULL DROP TABLE #MPLtempFileInformation;
 	IF OBJECT_ID('tempdb..#MPLoutput') IS NOT NULL DROP TABLE #MPLoutput;
-
-
 	CREATE TABLE #MPLoutput (Directory varchar(400), FilePath VARCHAR(400), SizeInMB DECIMAL(13,2), SizeInKB DECIMAL(13,2),FileDate VARCHAR(100))
-
 	CREATE TABLE #MPLtempFilePaths (Files VARCHAR(500))
 	CREATE TABLE #MPLtempFileInformation (FilePath VARCHAR(500), FileSize VARCHAR(100),FileDate VARCHAR(100))
-
 	---------------------------------------------------------------------------------------------
 	-- Call xp_cmdshell
 	---------------------------------------------------------------------------------------------    
-
      SET @Command = 'dir "'+ @LogPath +'"';
-     INSERT INTO #MPLtempFilePaths exec xp_cmdshell @Command
+     INSERT INTO #MPLtempFilePaths exec master.sys.xp_cmdshell @Command;
        --SELECT * FROM #MPLtempFilePaths
 	---------------------------------------------------------------------------------------------
 	-- Process the return data
 	--------------------------------------------------------------------------------------------- 
-
     --delete all directories
     DELETE #MPLtempFilePaths WHERE Files LIKE '%<dir>%' OR Files IS NULL;
     --delete all informational messages
@@ -2913,7 +2899,6 @@ IF @debug = 1 RAISERROR ('Collect Maintplan Plans Logs',0,1) WITH NOWAIT;
                     FD.FileDate
     FROM   #MPLtempFilePaths
                     CROSS APPLY(SELECT TOP 1 LEFT(Files,10) [FileDate],LTRIM(RIGHT(Files,(LEN(Files)-20)))[files])FD;
-
     --------------------------------------------------------------
     -- Store the results in the #MPLoutput table
     --------------------------------------------------------------
@@ -2926,7 +2911,6 @@ IF @debug = 1 RAISERROR ('Collect Maintplan Plans Logs',0,1) WITH NOWAIT;
             FileDate
     FROM    #MPLtempFileInformation
 	OPTION(RECOMPILE);
-
     --------------------------------------------------------------------------------------------
     DELETE FROM #MPLoutput WHERE Directory is null       
 	----------------------------------------------
@@ -2934,7 +2918,6 @@ IF @debug = 1 RAISERROR ('Collect Maintplan Plans Logs',0,1) WITH NOWAIT;
 	----------------------------------------------
 	IF OBJECT_ID('tempdb..#MPLtempFilePaths') IS NOT NULL DROP TABLE #MPLtempFilePaths  
 	IF OBJECT_ID('tempdb..#MPLtempFileInformation') IS NOT NULL DROP TABLE #MPLtempFileInformation  
-
 	SELECT mp.name [MaintenancePlanName],
 			F.SizeInMB ,
 			F.NumberOfFiles,
@@ -2943,7 +2926,6 @@ IF @debug = 1 RAISERROR ('Collect Maintplan Plans Logs',0,1) WITH NOWAIT;
 	FROM   msdb.dbo.sysmaintplan_plans mp
             OUTER APPLY(SELECT SUM(SizeInMB)[SizeInMB],COUNT_BIG(1)[NumberOfFiles],MIN(FileDate)[OldFile] FROM #MPLoutput WHERE FilePath LIKE mp.name + '%')F
 	OPTION(RECOMPILE);
-
 	IF OBJECT_ID('tempdb..#MPLoutput') IS NOT NULL DROP TABLE #MPLoutput 
 --------------------------------------------------------------------------------------------------------
 --------------------------------------------------------------------------------------------------------
@@ -2956,7 +2938,6 @@ BEGIN
 	IF OBJECT_ID('tempdb..#MSdistribution_agents', 'u') IS NOT NULL DROP TABLE #MSdistribution_agents;
 	IF OBJECT_ID('tempdb..#MSpublications', 'u') IS NOT NULL DROP TABLE #MSpublications;
 	IF OBJECT_ID('tempdb..#MSarticles', 'u') IS NOT NULL DROP TABLE #MSarticles;
-
 	CREATE TABLE #MSdistribution_status(
 		article_id	int	NULL,
 		agent_id	int		NULL,
@@ -2969,7 +2950,6 @@ BEGIN
 		id	int		NULL,
 		publication	sysname	NULL,
 		subscriber_db sysname NULL);
-
 	CREATE TABLE #MSpublications(
 		publication_id	int	NULL,
 		publication	sysname	NULL,
@@ -2977,7 +2957,6 @@ BEGIN
 		publisher_id	smallint	NULL,
 		publisher_db	sysname NULL
 		);
-
 	CREATE TABLE #MSarticles(
 		publisher_id	smallint	NULL,
 		publisher_db	sysname	NULL,
@@ -3015,7 +2994,6 @@ BEGIN
 	,(2,'-PollingInterval','5')
 	,(2,'-QueryTimeout','1800')
 	,(2,'-ReadBatchSize','500');
-
 	IF OBJECT_ID('tempdb..#profiles', 'u') IS NOT NULL DROP TABLE #profiles;
 	CREATE TABLE #profiles
 		(
@@ -3026,7 +3004,6 @@ BEGIN
 		  description VARCHAR(3000) ,
 		  def_profile BIT
 		);
-
 	INSERT  INTO #profiles
 			( profile_id ,
 			  profile_name ,
@@ -3056,17 +3033,13 @@ BEGIN
 		  source_object VARCHAR(200) ,
 		  NumRows BIGINT
 		);
-
 	DECLARE @ReplicationID INT = 1;
 	DECLARE @ReplicationMaxID INT; 
 	DECLARE @ReplicationRows INT; 
 	DECLARE curDistributor CURSOR LOCAL FAST_FORWARD READ_ONLY FOR 
 	SELECT [name] FROM sys.databases WHERE state = 0 AND is_distributor = 1;
-
 	OPEN curDistributor
-
 	FETCH NEXT FROM curDistributor INTO @DistributorName;
-
 WHILE @@FETCH_STATUS = 0
 BEGIN
 	--############################################################################################################### 
@@ -3079,7 +3052,6 @@ BEGIN
 	WHERE	UndelivCmdsInDistDB > 2000;'; -- GIVE A NUMBER HERE TO DEFINE A LARGE NUMBER OF RECORDS WAITING FOR REPLICATION;
 	
     EXEC sys.sp_executesql @cmd;
-
 	DELETE FROM #MSdistribution_agents;
 	SET @cmd = N'INSERT  #MSdistribution_agents
 	SELECT  [name],subscriber_id,id,publication,subscriber_db
@@ -3093,7 +3065,6 @@ BEGIN
 	FROM    ' + QUOTENAME(@DistributorName) + '..MSpublications;';
 	
     EXEC sys.sp_executesql @cmd;
-
 	
 	DELETE FROM #MSarticles;
 	SET @cmd = N'INSERT	#MSarticles
@@ -3101,7 +3072,6 @@ BEGIN
 	FROM    ' + QUOTENAME(@DistributorName) + '..MSarticles;';
 	
     EXEC sys.sp_executesql @cmd;
-
 	INSERT #SR_Replication
 	SELECT	3 [ID],
 			'Article - ' + a.article COLLATE DATABASE_DEFAULT + '(' + agents.subscriber_db COLLATE DATABASE_DEFAULT + ') on publication ' + p.publication COLLATE DATABASE_DEFAULT + ' have ' + CONVERT(VARCHAR(1000),s.UndelivCmdsInDistDB) + ' undelivered Commands In distributionDB. on ' + CONVERT(VARCHAR(5),COUNT(1))+ ' agent(s).',
@@ -3117,7 +3087,6 @@ BEGIN
 	--WHERE   agents.subscriber_db <> 'virtual' -- https://blogs.msdn.microsoft.com/mangeshd/2009/01/27/virtual-subscription-entries-in-the-distribution-mssubscriptions-table/
 	GROUP BY a.article,agents.subscriber_db,p.publication,s.UndelivCmdsInDistDB
 	OPTION(RECOMPILE);
-
 	SET @cmd = N'INSERT	#SR_Replication
 	SELECT  DISTINCT 2 [ID],
 			''You are using a '' + CASE publication_type WHEN 0 THEN ''Transactional'' WHEN 1 THEN ''Snapshot'' WHEN 2 THEN ''Merge'' ELSE '''' END + '' replication. You should turn off immediate_sync and subscriber_id, they can cause some performance isssues. On publication - '' + P.publication COLLATE DATABASE_DEFAULT + '' in publisher db - '' + P.publisher_db COLLATE DATABASE_DEFAULT  [Message],
@@ -3156,14 +3125,12 @@ BEGIN
 			  WHERE     MSdh.error_id <> 0
 						AND MSre.time > DATEADD(DAY, -2, GETDATE())
 		  
-
 			) T
 	WHERE   T.RN = 1
 	GROUP BY T.PublisherName,T.publisher_db,T.publication,T.error_text
 	OPTION(RECOMPILE);'
 	
     EXEC sys.sp_executesql @cmd;
-
 	-- Errors ignoring 
 	SET @cmd = N'INSERT	#SR_Replication
 	SELECT  13,''On '' + T.PublisherName + '' - '' + T.publisher_db + '' - '' + T.publication + '' between '' + CONVERT(VARCHAR(25),MIN(T.time),121) + '' and '' + CONVERT(VARCHAR(25),MAX(T.time),121) + '' have an error - '' + T.error_text COLLATE DATABASE_DEFAULT [Message],''Error'',NULL
@@ -3198,7 +3165,6 @@ BEGIN
 	OPTION(RECOMPILE);'
 	
     EXEC sys.sp_executesql @cmd;
-
 	INSERT	#SR_Replication
 	SELECT	13,Message,'Error',NULL
 	FROM	#ReplicationError;
@@ -3243,9 +3209,7 @@ BEGIN
 		   ''blogs.msdn.microsoft.com/chrissk/2009/12/29/how-to-resolve-when-distribution-database-is-growing-huge-25gig''
 	FROM    ' + QUOTENAME(@DistributorName) + '..MSrepl_commands
 	/*
-
 				*********************************************** THINK OF MAGIC NUMBER**************************************************
-
 	*/
 	HAVING COUNT(*) > 70000
 	UNION ALL
@@ -3255,9 +3219,7 @@ BEGIN
 		   NULL
 	FROM    ' + QUOTENAME(@DistributorName) + '..MSdistribution_status 
 	/*
-
 				*********************************************** THINK OF MAGIC NUMBER**************************************************
-
 	*/
 	HAVING SUM(UndelivCmdsInDistDB) > 8000
 	OPTION(RECOMPILE);'
@@ -3275,7 +3237,6 @@ BEGIN
 	------------------------------------------
 	--Check Size of tables in a Publication
 	DELETE FROM #ReplicationServers;
-
 	INSERT  #ReplicationServers
 			( PublicationName ,
 			  publisher_id ,
@@ -3293,10 +3254,8 @@ BEGIN
 	FROM    #MSpublications p
 			INNER JOIN #MSarticles a ON p.publication_id = a.publication_id
 			INNER JOIN sys.servers SR ON p.publisher_id = SR.server_id;
-
 	SELECT  @ReplicationMaxID = MAX(ID),@ReplicationID = MIN(ID)
 	FROM    #ReplicationServers;
-
 	WHILE @ReplicationID <= @ReplicationMaxID
     BEGIN
         SELECT  @cmd = 'SELECT @ReplicationRowsOut = Rows FROM OPENQUERY([' +
@@ -3307,18 +3266,13 @@ BEGIN
                               PublisherDB + '.' + source_object + ''''')     and index_id = 1'')'
         FROM    #ReplicationServers
         WHERE   ID = @ReplicationID;
-
         EXECUTE sp_executesql @cmd, N'@RowsOut BIGINT OUTPUT',
             @ReplicationRowsOut = @ReplicationRows OUTPUT;
-
         UPDATE  #ReplicationServers
         SET     NumRows = @ReplicationRows
         WHERE   ID = @ReplicationID;
-
         SET @ReplicationID += 1;
     END;
-
-
 	------------------------------------------
 	IF EXISTS ( SELECT  TOP 1 1 
 				FROM    #MSdistribution_agents D
@@ -3333,7 +3287,6 @@ BEGIN
 							AND P.profile_name <> 'Default agent profile'
 							AND P.agent_type = 2 )-- LOG agent
 		INSERT #SR_Replication VALUES (9,'Default Log reader agent profile has not been changed, maybe some configuration changes should be considered','Configuration',NULL);
-
 	IF EXISTS ( SELECT  TOP 1 1 
 				FROM    #MSdistribution_agents D
 						INNER JOIN #profiles P ON D.profile_id = P.profile_id
@@ -3347,11 +3300,8 @@ BEGIN
 							AND P.profile_name <> 'Default agent profile'
 							AND P.agent_type = 3 )-- distrebution agent
 		INSERT #SR_Replication VALUES (7,'Default distribution profile has not been changed, maybe some configuration changes should be considered','Configuration',NULL);
-
-
 	FETCH NEXT FROM curDistributor INTO @DistributorName
 	END
-
 	CLOSE curDistributor
 	DEALLOCATE curDistributor
 END
@@ -3376,7 +3326,6 @@ CREATE TABLE #sp_Blitz (
 			BEGIN
 				EXEC('DELETE FROM dbo.sp_BlitzTableOutput;')
 			END
-
 	    	DECLARE @CheckUserDatabaseObjects TINYINT = 0
 			DECLARE @CheckProcedureCache TINYINT = 0
 			DECLARE @OutputType VARCHAR(20) = 'NONE'
@@ -3398,7 +3347,6 @@ CREATE TABLE #sp_Blitz (
 			DECLARE @SummaryMode TINYINT
 			DECLARE @Version INT
 			DECLARE @VersionDate DATETIME
-
 			EXECUTE [dbo].[sp_Blitz] 
 			   @CheckUserDatabaseObjects
 			  ,@CheckProcedureCache
@@ -3422,7 +3370,6 @@ CREATE TABLE #sp_Blitz (
 			  ,@Help
 			  ,@Version OUTPUT
 			  ,@VersionDate OUTPUT;
-
 			  IF OBJECT_ID('dbo.sp_BlitzTableOutput') IS NOT NULL
 			  BEGIN
 				EXEC('INSERT	#sp_Blitz
@@ -3448,9 +3395,7 @@ WHERE	CheckID NOT IN (-1,1,2,14,6,4,55,158,155,1065,1057,1039,1036,1031,1015,101
 --------------------------------------------------------------------------------------------------------
 -----------------------------------
         IF @debug = 1 RAISERROR ('Make XML',0,1) WITH NOWAIT;
-
         DECLARE @XML XML;
-
         SET @XML = ( SELECT ( SELECT    NEWID() AS id ,
                                         @Client Client,
 										GETDATE() AS date ,
@@ -3519,8 +3464,10 @@ WHERE	CheckID NOT IN (-1,1,2,14,6,4,55,158,155,1065,1057,1039,1036,1031,1015,101
                             FOR XML AUTO , TYPE , ELEMENTS XSINIL ) AS Replications,
 							( SELECT    Data.* FROM      #SR_WaitStat Data
                             FOR XML AUTO , TYPE , ELEMENTS XSINIL ) AS WaitStat,
-							( SELECT    Data.* FROM      #SL_LoginIssue Data
+							( SELECT    Data.* FROM      #SR_LoginIssue Data
                             FOR XML AUTO , TYPE , ELEMENTS XSINIL ) AS LoginIssue,
+							( SELECT    Data.* FROM      #SR_RemoteServer Data
+                            FOR XML AUTO , TYPE , ELEMENTS XSINIL ) AS RemoteServerNode,
 							( SELECT    Data.* FROM      @DebugError Data WHERE	ISNULL(Data.Error,'') <> '' OR Data.Duration > 1
                             FOR XML AUTO , TYPE , ELEMENTS XSINIL ) AS DebugError,
 							( SELECT    Data.* FROM      #sp_Blitz Data
@@ -3528,7 +3475,6 @@ WHERE	CheckID NOT IN (-1,1,2,14,6,4,55,158,155,1065,1057,1039,1036,1031,1015,101
                         FROM   ( SELECT    1 AS col ) AS SiteReview
                     FOR XML AUTO , TYPE , ELEMENTS XSINIL
                     );
-
 		IF @Mask = 1
 		BEGIN
 			SELECT @XML =	CONVERT(XML,
@@ -3539,7 +3485,6 @@ WHERE	CheckID NOT IN (-1,1,2,14,6,4,55,158,155,1065,1057,1039,1036,1031,1015,101
 							DEFAULT_DOMAIN(),'DefaultDomainMask')
 							)
 		END
-
 		INSERT master.dbo.SiteReview ( Col ) SELECT  @XML;
 		IF @Display = 1 
 		BEGIN
@@ -3579,8 +3524,7 @@ WHERE	CheckID NOT IN (-1,1,2,14,6,4,55,158,155,1065,1057,1039,1036,1031,1015,101
 		DROP TABLE #SR_MaintenancePlanFiles;
 		DROP TABLE #SR_Replication;
 		DROP TABLE #SR_WaitStat;
-		DROP TABLE #SL_LoginIssue;
-
+		DROP TABLE #SR_LoginIssue;
     END TRY
     BEGIN CATCH 
         DECLARE @ErMessage NVARCHAR(4000) ,
@@ -3591,7 +3535,6 @@ WHERE	CheckID NOT IN (-1,1,2,14,6,4,55,158,155,1065,1057,1039,1036,1031,1015,101
                 @ErState = ERROR_STATE();
   
         RAISERROR (@ErMessage, @ErSeverity, @ErState );
-
                 
         IF @debug = 1
             PRINT @@SERVERNAME + ' Failed Generating Report';
@@ -3601,28 +3544,24 @@ WHERE	CheckID NOT IN (-1,1,2,14,6,4,55,158,155,1065,1057,1039,1036,1031,1015,101
     IF @debug = 1
         PRINT @@SERVERNAME + ' Finished Generating Report';
 --------------------------------------------------------------------------------------------------------
-
     IF @cmdshell = 1
     BEGIN
 		IF @debug = 1 RAISERROR ('Turn off "xp_cmdshell"',0,1) WITH NOWAIT;
         EXEC sp_configure 'xp_cmdshell', 0;
         RECONFIGURE WITH OVERRIDE;
     END;
-
 	IF @olea = 1
     BEGIN
 		IF @debug = 1 RAISERROR ('Turn off "Ole Automation Procedures"',0,1) WITH NOWAIT;
         EXEC sp_configure 'Ole Automation Procedures', 0;
         RECONFIGURE WITH OVERRIDE;
     END;
-
     IF @showadvanced = 1
     BEGIN
 		IF @debug = 1 RAISERROR ('Turn off "show advanced options"',0,1) WITH NOWAIT;
         EXEC sp_configure 'show advanced options', 0;
         RECONFIGURE WITH OVERRIDE;
     END;
-
 	IF @Display = 0
 	BEGIN
 	    SET @Print = ISNULL(@Print,'') + 'Go tack your file from here - "' + @Filename + '"';
