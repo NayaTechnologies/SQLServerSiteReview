@@ -23,10 +23,9 @@ LICENSE:
 	prohibited without the author's express written consent.
  ============================================================================
  TODO:
-	debug collect
-	Try Catch
+	Suport for SQL Server 2017
  ============================================================================*/
-CREATE PROCEDURE [dbo].[sp_SiteReview] ( @Client NVARCHAR(255) = N'General Client',@Allow_Weak_Password_Check BIT = 0,@debug BIT = 0,@Display BIT = 0,@Mask BIT = 1,@Help BIT = 0)
+ALTER PROCEDURE [dbo].[sp_SiteReview] ( @Client NVARCHAR(255) = N'General Client',@Allow_Weak_Password_Check BIT = 0,@debug BIT = 0,@Display BIT = 0,@Mask BIT = 1,@Help BIT = 0)
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -40,7 +39,7 @@ BEGIN
 	DECLARE @ClientVersion NVARCHAR(15);
 	DECLARE @ThankYou NVARCHAR(4000);
 	DECLARE @Print NVARCHAR(4000);
-	SET @ClientVersion = '1.499';
+	SET @ClientVersion = '1.500';
 	SET @ThankYou = 'Thank you for using this our SQL Server Site Review.
 --------------------------------------------------------------------------------
 Find out more in our site - www.NAYA-Technologies.com
@@ -79,6 +78,7 @@ Input Parameters:
 			@olea INT;
 	DECLARE @PS VARCHAR(4000);
 	DECLARE @Command VARCHAR(4000);
+	DECLARE @ErrorLog VARCHAR(2048);
 	DECLARE @Filename VARCHAR(1000);
 	DECLARE @FilePath VARCHAR(1000);	
 	DECLARE @cmd NVARCHAR(MAX);
@@ -100,8 +100,8 @@ Input Parameters:
 		SET @cmdshell = 1;
 	
     END;
-    ELSE
-    BEGIN TRY
+    
+
         DECLARE @MajorVersion INT;
         IF OBJECT_ID('tempdb..#checkversion') IS NOT NULL DROP TABLE #checkversion;
         CREATE TABLE #checkversion
@@ -675,12 +675,15 @@ BEGIN TRY
 		    IF @debug = 1 RAISERROR ('Collect Logins',0,1) WITH NOWAIT;
 		
 			INSERT	#SR_login
-			SELECT  name  COLLATE DATABASE_DEFAULT [Name] ,
+			SELECT  name COLLATE DATABASE_DEFAULT [Name] ,
 					CONVERT(NVARCHAR(6),SUBSTRING([password_hash], 0, 3),1) Header ,
 					CONVERT(NVARCHAR(MAX), CONVERT(VARBINARY(4), SUBSTRING([password_hash_str], 2, 2)),1) Salt ,
 					[password_hash_full_str] password_hash
 			FROM    sys.sql_logins WITH ( NOLOCK )
 					CROSS APPLY (SELECT TOP 1 CONVERT(NVARCHAR(MAX), password_hash,1) [password_hash_full_str],CONVERT(NVARCHAR(MAX), password_hash) [password_hash_str])P
+			WHERE	name COLLATE DATABASE_DEFAULT NOT IN ( '##MS_PolicyEventProcessingLogin##',
+									 '##MS_PolicyTsqlExecutionLogin##',
+									 '##MS_SSISServerCleanupJobLogin##' )
 			OPTION  ( RECOMPILE );
 		END
 		INSERT @DebugError VALUES  ('Logins',NULL,DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
@@ -1797,52 +1800,47 @@ BEGIN TRY
 	
 			INSERT	#Nodes
 			SELECT	NodeName,'SQL Cluster' [Type]
-			FROM	sys.dm_os_cluster_nodes;
-
+			FROM	sys.dm_os_cluster_nodes
+			OPTION(RECOMPILE);
 			if SERVERPROPERTY('IsHadrEnabled') = 1
 				EXEC('INSERT    #Nodes
 SELECT member_name,''AlwaysOn''
 FROM   sys.dm_hadr_cluster_members
-WHERE	member_type = 0;');
+WHERE	member_type = 0
+OPTION(RECOMPILE);');
 		IF EXISTS(SELECT COUNT(1) FROM #Nodes HAVING COUNT(1) > 1)
 		BEGIN
-
 			DECLARE cuNode CURSOR LOCAL FAST_FORWARD READ_ONLY FOR 
 			SELECT	NodeName
 			FROM	#Nodes
 			OPEN cuNode
-
 			FETCH NEXT FROM cuNode INTO @RemoteServer
-
 			WHILE @@FETCH_STATUS = 0
 			BEGIN
 				DELETE FROM @output;
 				DELETE FROM @RemoteProp;
 				--By powershell
 				SET @Command = 'powershell.exe -noprofile -command "$servername = ''' + @RemoteServer + '''; invoke-command -computer $servername -scriptblock {[array]$wmiinfo = Get-WmiObject Win32_Processor; $cpu = ($wmiinfo[0].name);  $cores = ( $wmiinfo | Select SocketDesignation | Measure-Object ).count;  $NumberOfLogicalProcessors = ( $wmiinfo[0].NumberOfLogicalProcessors); $obj = New-Object Object; $obj | Add-Member Noteproperty CPU -value $cpu; $obj | Add-Member Noteproperty Cores -value $cores; $obj | Add-Member Noteproperty NumberOfLogicalProcessors -value $NumberOfLogicalProcessors; Write-Host ($obj | Format-List | Out-String);}"';
-
 				INSERT @output
 				EXEC master.sys.xp_cmdshell @Command;
-				IF exists(select top 1 1 from @output WHERE line like '%is not recognized as an internal or external command%')
-				begin
-					   delete from @output;
+				IF EXISTS(SELECT TOP 1 1 FROM @output WHERE line like '%is not recognized as an internal or external command%')
+				BEGIN
+					   DELETE FROM @output;
 					   SET @Command = '%SYSTEMROOT%\System32\WindowsPowerShell\v1.0\powershell.exe -noprofile -command "$servername = ''' + @RemoteServer + '''; invoke-command -computer $servername -scriptblock {[array]$wmiinfo = Get-WmiObject Win32_Processor; $cpu = ($wmiinfo[0].name);  $cores = ( $wmiinfo | Select SocketDesignation | Measure-Object ).count;  $NumberOfLogicalProcessors = ( $wmiinfo[0].NumberOfLogicalProcessors); $obj = New-Object Object; $obj | Add-Member Noteproperty CPU -value $cpu; $obj | Add-Member Noteproperty Cores -value $cores; $obj | Add-Member Noteproperty NumberOfLogicalProcessors -value $NumberOfLogicalProcessors; Write-Host ($obj | Format-List | Out-String);}"';
-
 					   INSERT @output
 					   EXEC master.sys.xp_cmdshell @Command;
-
 				END
 				IF NOT EXISTS(SELECT TOP 1 1 FROM @output WHERE line = 'The system cannot find the path specified.')
-				INSERT	@RemoteProp
-				SELECT	@RemoteServer [Server],
-						LEFT(line,CHARINDEX(' ',line))[Property],
-						RIGHT(line,CASE CHARINDEX(':',REVERSE(line)) WHEN 0 THEN 0 ELSE CHARINDEX(':',REVERSE(line))-1 END)[Value]
-				FROM	@output
-				WHERE	line IS NOT NULL ;
-
-
-
-			
+					AND NOT EXISTS(SELECT TOP 1 1 FROM @output WHERE line LIKE '%following error message : Access is denied%')
+					INSERT	@RemoteProp
+					SELECT	@RemoteServer [Server],
+							LEFT(line,CHARINDEX(' ',line))[Property],
+							RIGHT(line,CASE CHARINDEX(':',REVERSE(line)) WHEN 0 THEN 0 ELSE CHARINDEX(':',REVERSE(line))-1 END)[Value]
+					FROM	@output
+					WHERE	line IS NOT NULL
+					OPTION(RECOMPILE);
+				ELSE
+					RAISERROR('Access is denied on login',16,1);
 				IF EXISTS(SELECT TOP 1 1 FROM @RemoteProp)
 				BEGIN
 					INSERT	#SR_RemoteServer
@@ -1854,12 +1852,9 @@ WHERE	member_type = 0;');
 				DELETE FROM @RemoteProp;
 				FETCH NEXT FROM cuNode INTO @RemoteServer;
 			END
-
 			CLOSE cuNode;
 			DEALLOCATE cuNode;
 		END
-
-
 		DROP TABLE #Nodes;
 		INSERT @DebugError VALUES  ('Node Compare',NULL,DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
 	END TRY
@@ -1876,7 +1871,8 @@ WHERE	member_type = 0;');
             INSERT @output EXEC xp_cmdshell @PS;
         END TRY
         BEGIN CATCH
-	--{TODO: }
+			SET @ErrorLog = ERROR_MESSAGE();
+			GOTO GTError;
         END CATCH;
 		IF OBJECT_ID('tempdb..#SR_Offset') IS NOT NULL
 			DROP TABLE #SR_Offset;
@@ -1976,7 +1972,8 @@ WHERE	member_type = 0;');
 					MAX(CAST(vs.total_bytes AS FLOAT)) total_bytes
 			FROM    sys.master_files AS f 
 					CROSS APPLY sys.dm_os_volume_stats(f.database_id, f.file_id) AS vs
-			GROUP BY vs.volume_mount_point;
+			GROUP BY vs.volume_mount_point
+			OPTION(RECOMPILE);
 		END
 		ELSE
 		BEGIN
@@ -2009,8 +2006,7 @@ sys.dm_os_volume_stats - Returns information about the operating system volume (
 				  Label VARCHAR(10));
 			INSERT #_DriveSpace EXEC master.dbo.xp_fixeddrives;
 			-- Iterate through drive letters.
-			DECLARE curdriveletters CURSOR LOCAL FAST_FORWARD
-			FOR
+			DECLARE curdriveletters CURSOR LOCAL FAST_FORWARD READ_ONLY FOR 
 				SELECT  driveletter
 				FROM    #_DriveSpace;
 			DECLARE @driveletter CHAR(1);
@@ -2209,8 +2205,7 @@ IF OBJECT_ID('tempdb..#temp') IS NOT NULL
     DECLARE @DBName sysname ,
 			@SQLcmd VARCHAR(4000);
  
-    DECLARE dbccpage CURSOR LOCAL FAST_FORWARD
-    FOR
+    DECLARE dbccpage CURSOR LOCAL FAST_FORWARD READ_ONLY FOR 
         SELECT  name
         FROM    sys.databases
         WHERE   state = 0
@@ -2332,13 +2327,13 @@ WHERE	db.state = 0
 UNION ALL
 SELECT  'File Growth'[Type],db.name as [Database Name],N'Change database file growth to Megabyte.',CONVERT(NVARCHAR(MAX),NULL)[Link]
 FROM    sys.databases db
-        CROSS JOIN (SELECT TOP 1 1 [Ex] FROM sys.master_files mf WHERE mf.database_id = db.database_id AND mf.is_percent_growth = 1)mf
+        CROSS APPLY (SELECT TOP 1 1 [Ex] FROM sys.master_files mf WHERE mf.database_id = db.database_id AND mf.is_percent_growth = 1)mf
 WHERE   db.state = 0
 		AND db.is_read_only = 0
 UNION ALL
 SELECT  'File Growth'[Type],db.name as [Database Name],N'Change database file growth more then 1 Megabyte.',CONVERT(NVARCHAR(MAX),NULL)[Link]
 FROM    sys.databases db
-        CROSS JOIN (SELECT TOP 1 1 [Ex] FROM sys.master_files mf WHERE mf.database_id = db.database_id AND mf.is_percent_growth = 0 AND mf.growth = 128)mf
+        CROSS APPLY (SELECT TOP 1 1 [Ex] FROM sys.master_files mf WHERE mf.database_id = db.database_id AND mf.is_percent_growth = 0 AND mf.growth = 128)mf
 WHERE   db.state = 0
 		AND db.is_read_only = 0
 UNION ALL
@@ -2560,8 +2555,7 @@ OPTION(RECOMPILE);');
 --------------------------------------------
 	BEGIN TRY
 		SET @DebugStartTime = GETDATE();
-		DECLARE cuMaxIdent CURSOR LOCAL FAST_FORWARD
-		FOR
+		DECLARE cuMaxIdent CURSOR LOCAL FAST_FORWARD READ_ONLY FOR 
 			SELECT  name
 			FROM    sys.databases
 			WHERE   state = 0
@@ -3400,7 +3394,8 @@ WHERE	CheckID NOT IN (-1,1,2,14,6,4,55,158,155,1065,1057,1039,1036,1031,1015,101
                                         @Client Client,
 										GETDATE() AS date ,
                                         CASE WHEN @Mask = 1 THEN CONVERT(sysname,'SQLServerMask') ELSE @@SERVERNAME END AS ServerName,
-										@ClientVersion [ClientVersion]
+										@ClientVersion [ClientVersion],
+										SUSER_NAME() [RuningBy]
                                 FROM      ( SELECT    1 AS col1
                                         ) AS Data
                             FOR XML AUTO , TYPE , ELEMENTS XSINIL ) AS ReportMetadata ,
@@ -3525,23 +3520,17 @@ WHERE	CheckID NOT IN (-1,1,2,14,6,4,55,158,155,1065,1057,1039,1036,1031,1015,101
 		DROP TABLE #SR_Replication;
 		DROP TABLE #SR_WaitStat;
 		DROP TABLE #SR_LoginIssue;
-    END TRY
-    BEGIN CATCH 
-        DECLARE @ErMessage NVARCHAR(4000) ,
-            @ErSeverity INT ,
-            @ErState INT;
-        SELECT  @ErMessage = ERROR_MESSAGE() ,
-                @ErSeverity = ERROR_SEVERITY() ,
-                @ErState = ERROR_STATE();
-  
-        RAISERROR (@ErMessage, @ErSeverity, @ErState );
+  --  END TRY
+  --  BEGIN CATCH 
+       
+  --      SELECT  @ErrorLog = ERROR_MESSAGE();
+  --      IF @debug = 1
+  --          PRINT @@SERVERNAME + ' Failed Generating Report';
                 
-        IF @debug = 1
-            PRINT @@SERVERNAME + ' Failed Generating Report';
-		--IF @debug = 1 PRINT @Error;
-		--RETURN -1;
-    END CATCH;
-    IF @debug = 1
+		--GOTO GTError;
+  --  END CATCH
+GTError:    
+	IF @debug = 1
         PRINT @@SERVERNAME + ' Finished Generating Report';
 --------------------------------------------------------------------------------------------------------
     IF @cmdshell = 1
@@ -3567,4 +3556,6 @@ WHERE	CheckID NOT IN (-1,1,2,14,6,4,55,158,155,1065,1057,1039,1036,1031,1015,101
 	    SET @Print = ISNULL(@Print,'') + 'Go tack your file from here - "' + @Filename + '"';
 	END
 	PRINT @Print;
+	IF @ErrorLog IS NOT NULL
+		RAISERROR(@ErrorLog,16,1);
 END
