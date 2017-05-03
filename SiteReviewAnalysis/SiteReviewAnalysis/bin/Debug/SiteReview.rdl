@@ -2123,14 +2123,16 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Reco">
+                            <Textbox Name="Textbox27">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
                               <Paragraphs>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
+                                      <Label>OSph</Label>
                                       <Value>=Fields!Reco.Value</Value>
+                                      <MarkupType>HTML</MarkupType>
                                       <Style>
                                         <FontFamily>Segoe UI</FontFamily>
                                       </Style>
@@ -2139,7 +2141,7 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
                                   <Style />
                                 </Paragraph>
                               </Paragraphs>
-                              <rd:DefaultName>Reco</rd:DefaultName>
+                              <rd:DefaultName>Textbox27</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>LightGrey</Color>
@@ -2304,14 +2306,16 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
                         </TablixCell>
                         <TablixCell>
                           <CellContents>
-                            <Textbox Name="Value">
+                            <Textbox Name="Textbox51">
                               <CanGrow>true</CanGrow>
                               <KeepTogether>true</KeepTogether>
                               <Paragraphs>
                                 <Paragraph>
                                   <TextRuns>
                                     <TextRun>
+                                      <Label>phCPU</Label>
                                       <Value>=Fields!Value.Value</Value>
+                                      <MarkupType>HTML</MarkupType>
                                       <Style>
                                         <FontFamily>Segoe UI</FontFamily>
                                         <FontWeight>Bold</FontWeight>
@@ -2322,14 +2326,7 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
                                   <Style />
                                 </Paragraph>
                               </Paragraphs>
-                              <rd:DefaultName>Value</rd:DefaultName>
-                              <ActionInfo>
-                                <Actions>
-                                  <Action>
-                                    <Hyperlink>=Fields!Link.Value</Hyperlink>
-                                  </Action>
-                                </Actions>
-                              </ActionInfo>
+                              <rd:DefaultName>Textbox51</rd:DefaultName>
                               <Style>
                                 <Border>
                                   <Color>LightGrey</Color>

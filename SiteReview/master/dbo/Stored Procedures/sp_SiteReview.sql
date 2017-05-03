@@ -25,7 +25,7 @@ LICENSE:
  TODO:
 	Suport for SQL Server 2017
  ============================================================================*/
-ALTER PROCEDURE [dbo].[sp_SiteReview] ( @Client NVARCHAR(255) = N'General Client',@Allow_Weak_Password_Check BIT = 0,@debug BIT = 0,@Display BIT = 0,@Mask BIT = 1,@Help BIT = 0)
+CREATE PROCEDURE [dbo].[sp_SiteReview] ( @Client NVARCHAR(255) = N'General Client',@Allow_Weak_Password_Check BIT = 0,@debug BIT = 0,@Display BIT = 0,@Mask BIT = 1,@Help BIT = 0)
 AS
 BEGIN
 	SET NOCOUNT ON;
@@ -39,7 +39,7 @@ BEGIN
 	DECLARE @ClientVersion NVARCHAR(15);
 	DECLARE @ThankYou NVARCHAR(4000);
 	DECLARE @Print NVARCHAR(4000);
-	SET @ClientVersion = '1.500';
+	SET @ClientVersion = '1.501';
 	SET @ThankYou = 'Thank you for using this our SQL Server Site Review.
 --------------------------------------------------------------------------------
 Find out more in our site - www.NAYA-Technologies.com
@@ -85,6 +85,9 @@ Input Parameters:
     SELECT  @showadvanced = 0 ,
             @cmdshell = 0,
 			@olea = 0;
+	DECLARE @output TABLE (line VARCHAR(255));
+	DECLARE @outputIdentity TABLE ([ID] [int] NOT NULL IDENTITY(1,1),line VARCHAR(255));
+	DECLARE @sql VARCHAR(4000);
     IF EXISTS ( SELECT TOP 1 1 FROM sys.configurations C WHERE C.name = 'show advanced options' AND C.value = 0 )
     BEGIN
 		IF @debug = 1 RAISERROR ('Turn on "show advanced options"',0,1) WITH NOWAIT;
@@ -101,7 +104,6 @@ Input Parameters:
 	
     END;
     
-
         DECLARE @MajorVersion INT;
         IF OBJECT_ID('tempdb..#checkversion') IS NOT NULL DROP TABLE #checkversion;
         CREATE TABLE #checkversion
@@ -203,11 +205,18 @@ MAXDOP (Max degree of parallelism) must be defined as 1 in both SQL Server 2000 
 		DECLARE @DB_tfs TABLE
 		(DatabaseName sysname);
 		--CRM Dynamics
-		INSERT @DB_Exclude
-		SELECT D.name
-		FROM   sys.databases D
-		WHERE  D.name IN ('MSCRM_CONFIG','OrganizationName_MSCRM')
-        OPTION  ( RECOMPILE );
+		IF DB_ID('MSCRM_CONFIG') IS NOT NULL
+		BEGIN
+			INSERT @DB_Exclude
+			SELECT D.name
+			FROM   sys.databases D
+			WHERE  D.name = 'MSCRM_CONFIG'
+				   OR D.name LIKE '%[_]MSCRM'
+			UNION
+			SELECT [DatabaseName] COLLATE DATABASE_DEFAULT
+			FROM   [MSCRM_CONFIG].[dbo].[Organization]
+			OPTION  ( RECOMPILE );
+		END
 		DECLARE @IsCRMDynamicsON BIT = 0;
 		DECLARE @IsBizTalkON BIT = 0;
 		DECLARE @IsSharePointON BIT = 0;
@@ -386,29 +395,40 @@ OPTION  ( RECOMPILE );';
 	BEGIN TRY
 		SET @DebugStartTime = GETDATE();
 		IF @debug = 1 RAISERROR ('Collect System Info',0,1) WITH NOWAIT;
-        DECLARE @output TABLE ( line VARCHAR(255) );
-		DECLARE @sql VARCHAR(4000);
+        
 		CREATE TABLE #SR_KB
 		( 
 			KBID VARCHAR(255)
 		) 
 		--cleanUP
-        DELETE  FROM @output;
+        DELETE  FROM @outputIdentity;
 		DECLARE @OSName NVARCHAR(1000);
 
 		--systeminfo - For OS & KB
         SET @sql = 'systeminfo';
 	
-        INSERT  @output EXEC xp_cmdshell @sql;
-
+        INSERT  @outputIdentity EXEC xp_cmdshell @sql;
+		
 		SELECT	@OSName = LTRIM(REPLACE(O.line,'OS Name:',''))
 		FROM	@output O
 		WHERE	O.line LIKE '%OS Name:%';
+		
+		WITH cte AS (
+			SELECT	TOP 1 O.ID,O.line
+			FROM	@outputIdentity O
+			WHERE	O.line LIKE 'Hotfix%'
+			UNION ALL
+			SELECT	O.ID,O.line
+			FROM	@outputIdentity O
+					INNER JOIN cte c ON c.ID + 1 = O.ID
+		
+			WHERE	O.line LIKE '%]:%'
 
-		INSERT	#SR_KB
-		SELECT	SUBSTRING(O.line,CHARINDEX(':',O.line) + 2,LEN(O.line))--''
-		FROM	@output O
-		WHERE	O.line LIKE '%KB%';
+			)INSERT	#SR_KB
+			SELECT	REPLACE(SUBSTRING(cte.line,CHARINDEX(']: ',cte.line) + 3,LEN(cte.line)),'KB','')
+			 FROM	cte
+			 WHERE	cte.line NOT LIKE 'Hotfix%'
+
 		INSERT @DebugError VALUES  ('System Info',NULL,DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
 	END TRY
 	BEGIN CATCH
@@ -2628,7 +2648,7 @@ END';
 IF @debug = 1 RAISERROR ('Collect HADR Services',0,1) WITH NOWAIT;
 IF OBJECT_ID('tempdb..#SR_HADRServices') IS NOT NULL
 	DROP TABLE #SR_HADRServices;
-CREATE TABLE #SR_HADRServices([AlwaysOn] BIT ,[Replication] BIT,[LogShipping] BIT, [Mirror] BIT)
+CREATE TABLE #SR_HADRServices([AlwaysOn] BIT ,[Replication] BIT,[LogShipping] BIT, [Mirror] BIT,Cluster BIT)
 INSERT #SR_HADRServices
 SELECT  ISNULL(CONVERT(BIT,SERVERPROPERTY('IsHadrEnabled')),0) [AlwaysOn] ,
         ISNULL(( SELECT TOP 1
@@ -2649,7 +2669,9 @@ SELECT  ISNULL(CONVERT(BIT,SERVERPROPERTY('IsHadrEnabled')),0) [AlwaysOn] ,
                         INNER JOIN sys.database_mirroring B ON A.database_id = B.database_id
                  WHERE  A.database_id > 4
                         AND B.mirroring_state IS NOT NULL
-               ), 0) [Mirror]
+               ), 0) [Mirror],
+			   (SELECT TOP 1 1 [Cluster] FROM sys.dm_hadr_cluster_members
+				WHERE	member_type = 0)[Cluster]
 		OPTION(RECOMPILE); 
  
 --------------------------------------------------------------------------------------------------------

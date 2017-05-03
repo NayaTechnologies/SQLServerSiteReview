@@ -615,4 +615,7 @@
       <SqlPermissionSet>UNSAFE</SqlPermissionSet>
     </Reference>
   </ItemGroup>
+  <ItemGroup>
+    <PostDeploy Include="Script.PostDeployment.Data.sql" />
+  </ItemGroup>
 </Project>
