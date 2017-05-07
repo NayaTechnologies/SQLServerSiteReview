@@ -42,7 +42,7 @@ BEGIN
 	DECLARE @ClientVersion NVARCHAR(15);
 	DECLARE @ThankYou NVARCHAR(4000);
 	DECLARE @Print NVARCHAR(4000);
-	SET @ClientVersion = '1.502';
+	SET @ClientVersion = '1.503';
 	SET @ThankYou = 'Thank you for using this our SQL Server Site Review.
 --------------------------------------------------------------------------------
 Find out more in our site - www.NAYA-Technologies.com
@@ -442,6 +442,7 @@ OPTION  ( RECOMPILE );';
 			SELECT	REPLACE(SUBSTRING(cte.line,CHARINDEX(']: ',cte.line) + 3,LEN(cte.line)),'KB','')
 			 FROM	cte
 			 WHERE	cte.line NOT LIKE 'Hotfix%'
+			 option ( MaxRecursion 0 ,RECOMPILE);
 
 		INSERT @DebugError VALUES  ('System Info',NULL,DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
 	END TRY
