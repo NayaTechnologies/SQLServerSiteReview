@@ -22,6 +22,9 @@ LICENSE:
 	Redistribution or sale of this script, in whole or in part, is 
 	prohibited without the author's express written consent.
  ============================================================================
+ Execute:
+	EXEC [dbo].[sp_SiteReview] N'General Client',1,0,1,0,0;
+ ============================================================================
  TODO:
 	Suport for SQL Server 2017
  ============================================================================*/
@@ -39,7 +42,7 @@ BEGIN
 	DECLARE @ClientVersion NVARCHAR(15);
 	DECLARE @ThankYou NVARCHAR(4000);
 	DECLARE @Print NVARCHAR(4000);
-	SET @ClientVersion = '1.501';
+	SET @ClientVersion = '1.502';
 	SET @ThankYou = 'Thank you for using this our SQL Server Site Review.
 --------------------------------------------------------------------------------
 Find out more in our site - www.NAYA-Technologies.com
@@ -82,6 +85,7 @@ Input Parameters:
 	DECLARE @Filename VARCHAR(1000);
 	DECLARE @FilePath VARCHAR(1000);	
 	DECLARE @cmd NVARCHAR(MAX);
+	DECLARE @RC INT;
     SELECT  @showadvanced = 0 ,
             @cmdshell = 0,
 			@olea = 0;
@@ -202,12 +206,16 @@ MAXDOP (Max degree of parallelism) must be defined as 1 in both SQL Server 2000 
 		IF @debug = 1 RAISERROR ('Collect Software',0,1) WITH NOWAIT;
 		DECLARE @DB_Exclude TABLE
 		(DatabaseName sysname);
+		DECLARE @DB_CRM TABLE
+		(DatabaseName sysname);
+		DECLARE @DB_SharePoint TABLE
+		(DatabaseName sysname);
 		DECLARE @DB_tfs TABLE
 		(DatabaseName sysname);
 		--CRM Dynamics
 		IF DB_ID('MSCRM_CONFIG') IS NOT NULL
 		BEGIN
-			INSERT @DB_Exclude
+			INSERT @DB_CRM
 			SELECT D.name
 			FROM   sys.databases D
 			WHERE  D.name = 'MSCRM_CONFIG'
@@ -216,20 +224,15 @@ MAXDOP (Max degree of parallelism) must be defined as 1 in both SQL Server 2000 
 			SELECT [DatabaseName] COLLATE DATABASE_DEFAULT
 			FROM   [MSCRM_CONFIG].[dbo].[Organization]
 			OPTION  ( RECOMPILE );
+			SET @RC = @@ROWCOUNT;
 		END
 		DECLARE @IsCRMDynamicsON BIT = 0;
 		DECLARE @IsBizTalkON BIT = 0;
 		DECLARE @IsSharePointON BIT = 0;
 		DECLARE @IsTFSON BIT = 0;
-		SELECT TOP 1 @IsCRMDynamicsON = 1 
-		FROM   sys.server_principals SP
-		WHERE  SP.name = 'MSCRMSqlLogin'
-		IF @IsCRMDynamicsON = 0 
-		   SELECT TOP 1 @IsCRMDynamicsON = 1
-		   FROM   @DB_Exclude
-        OPTION  ( RECOMPILE );
-		DELETE FROM @DB_Exclude
-        OPTION  ( RECOMPILE );
+		IF @RC > 0 OR EXISTS (SELECT TOP 1 1 FROM sys.server_principals SP WHERE  SP.name = 'MSCRMSqlLogin')
+			SET @IsCRMDynamicsON = 1 ;
+		
 		--BizTalk
 		SELECT @IsBizTalkON = 1 
 		WHERE EXISTS (
@@ -237,14 +240,15 @@ MAXDOP (Max degree of parallelism) must be defined as 1 in both SQL Server 2000 
 		FROM   sys.databases D
 		WHERE  D.name IN (N'BizTalkMsgBoxDB',N'BizTalkRuleEngineDb',N'SSODB',N'BizTalkHWSDb',N'BizTalkEDIDb',N'BAMArchive',N'BAMStarSchema',N'BAMPrimaryImport',N'BizTalkMgmtDb',N'BizTalkAnalysisDb',N'BizTalkTPMDb')
 		) OPTION  ( RECOMPILE );
+
 		--SharePoint
-		INSERT @DB_Exclude
+		INSERT @DB_SharePoint
 		EXEC sp_MSforeachdb 'SELECT TOP 1 ''?'' [DatabaseName]
 FROM   [?].sys.database_principals DP
 WHERE  DP.type = ''R'' AND DP.name IN (N''SPDataAccess'',N''SPReadOnly'')
 OPTION  ( RECOMPILE );'
 		SELECT @IsSharePointON = 1 
-		WHERE EXISTS (SELECT TOP 1 1 FROM @DB_Exclude);
+		WHERE EXISTS (SELECT TOP 1 1 FROM @DB_SharePoint);
 		
 		--Team Foundation Server Databases(TFS)
 		IF DB_ID('Tfs_Configuration') IS NOT NULL
@@ -271,7 +275,17 @@ OPTION  ( RECOMPILE );'
 		UNION ALL SELECT 'CRMDynamics' [Software] ,@IsCRMDynamicsON [Status]
 		UNION ALL SELECT 'TFS' [Software] ,@IsTFSON [Status]
         OPTION  ( RECOMPILE );
-
+		INSERT @DB_Exclude
+		SELECT	DatabaseName
+		FROM	@DB_SharePoint
+		UNION ALL
+		SELECT	DatabaseName
+		FROM	@DB_CRM
+		UNION ALL 
+		SELECT	D.name COLLATE DATABASE_DEFAULT
+		FROM	sys.databases D
+		WHERE	D.name IN (N'BizTalkMsgBoxDB',N'BizTalkRuleEngineDb',N'SSODB',N'BizTalkHWSDb',N'BizTalkEDIDb',N'BAMArchive',N'BAMStarSchema',N'BAMPrimaryImport',N'BizTalkMgmtDb',N'BizTalkAnalysisDb',N'BizTalkTPMDb')
+		OPTION  ( RECOMPILE )
 		INSERT @DebugError VALUES  ('Collect Software',NULL,DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
 	END TRY
 	BEGIN CATCH
@@ -365,8 +379,8 @@ OPTION  ( RECOMPILE );';
                 DF.NumberOfDataFiles ,
                 LF.NumberOfLogFiles,
 				CASE WHEN D.name IN ('BizTalkMsgBoxDB','BizTalkRuleEngineDb','SSODB','BizTalkHWSDb','BizTalkEDIDb','BAMArchive','BAMStarSchema','BAMPrimaryImport','BizTalkMgmtDb','BizTalkAnalysisDb','BizTalkTPMDb') THEN 1 ELSE 0 END [IsBizTalk],
-				CASE WHEN D.name IN ('MSCRM_CONFIG','OrganizationName_MSCRM') THEN 1 ELSE 0 END [IsCRMDynamics],
-				CASE WHEN D.name IN (SELECT DatabaseName FROM @DB_Exclude) THEN 1 ELSE 0 END [IsSharePoint],
+				CASE WHEN D.name IN (SELECT DatabaseName FROM @DB_CRM) THEN 1 ELSE 0 END [IsCRMDynamics],
+				CASE WHEN D.name IN (SELECT DatabaseName FROM @DB_SharePoint) THEN 1 ELSE 0 END [IsSharePoint],
 				CASE WHEN D.name IN (SELECT DatabaseName FROM @DB_tfs) THEN 1 ELSE 0 END [IsTFS]
         INTO    #SR_Databases
         FROM    sys.databases D
@@ -2645,6 +2659,8 @@ END';
 		INSERT @DebugError VALUES  ('Untrusted Constraints',ERROR_MESSAGE(),DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
 	END CATCH
 --------------------------------------------------------------------------------------------------------
+	BEGIN TRY
+		SET @DebugStartTime = GETDATE();
 IF @debug = 1 RAISERROR ('Collect HADR Services',0,1) WITH NOWAIT;
 IF OBJECT_ID('tempdb..#SR_HADRServices') IS NOT NULL
 	DROP TABLE #SR_HADRServices;
@@ -2673,8 +2689,15 @@ SELECT  ISNULL(CONVERT(BIT,SERVERPROPERTY('IsHadrEnabled')),0) [AlwaysOn] ,
 			   (SELECT TOP 1 1 [Cluster] FROM sys.dm_hadr_cluster_members
 				WHERE	member_type = 0)[Cluster]
 		OPTION(RECOMPILE); 
+		INSERT @DebugError VALUES  ('HADR Services',NULL,DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
+	END TRY
+	BEGIN CATCH
+		INSERT @DebugError VALUES  ('HADR Services',ERROR_MESSAGE(),DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
+	END CATCH
  
 --------------------------------------------------------------------------------------------------------
+	BEGIN TRY
+		SET @DebugStartTime = GETDATE();
 IF @debug = 1 
 BEGIN
     IF EXISTS(SELECT TOP 1 1 FROM #SR_HADRServices WHERE AlwaysOn = 1) RAISERROR ('Collect HADR - AlwaysOn State',0,1) WITH NOWAIT;
@@ -2725,7 +2748,14 @@ OPTION(RECOMPILE);');
 			INNER JOIN #HADR_Replica R  ON hadr.msg LIKE '%' + member_name + '%'
 	OPTION(RECOMPILE);
 END
+		INSERT @DebugError VALUES  ('AlwaysOn State',NULL,DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
+	END TRY
+	BEGIN CATCH
+		INSERT @DebugError VALUES  ('AlwaysOn State',ERROR_MESSAGE(),DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
+	END CATCH
 --------------------------------------------------------------------------------------------------------
+	BEGIN TRY
+		SET @DebugStartTime = GETDATE();
 IF @debug = 1 
 BEGIN
     IF EXISTS(SELECT TOP 1 1 FROM #SR_HADRServices WHERE AlwaysOn = 1) RAISERROR ('Collect HADR - AlwaysOn info',0,1) WITH NOWAIT;
@@ -2792,7 +2822,14 @@ FROM    sys.dm_hadr_database_replica_states AS drs
         INNER JOIN sys.availability_replicas AS ar ON drs.group_id = ar.group_id AND drs.replica_id = ar.replica_id
 OPTION(RECOMPILE);');
 END
+		INSERT @DebugError VALUES  ('AlwaysOn info',NULL,DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
+	END TRY
+	BEGIN CATCH
+		INSERT @DebugError VALUES  ('AlwaysOn info',ERROR_MESSAGE(),DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
+	END CATCH
 --------------------------------------------------------------------------------------------------------
+	BEGIN TRY
+		SET @DebugStartTime = GETDATE();
 IF @debug = 1 
 BEGIN
     IF EXISTS(SELECT TOP 1 1 FROM #SR_HADRServices WHERE AlwaysOn = 1) RAISERROR ('Collect AlwaysOn Latency info',0,1) WITH NOWAIT;
@@ -2837,7 +2874,14 @@ WHERE   ar.replica_server_name = @@SERVERNAME
 OPTION(RECOMPILE);
 	')
 END
+		INSERT @DebugError VALUES  ('AlwaysOn Latency',NULL,DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
+	END TRY
+	BEGIN CATCH
+		INSERT @DebugError VALUES  ('AlwaysOn Latency',ERROR_MESSAGE(),DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
+	END CATCH
 --------------------------------------------------------------------------------------------------------
+	BEGIN TRY
+		SET @DebugStartTime = GETDATE();
 IF @debug = 1 
 BEGIN
     IF EXISTS(SELECT TOP 1 1 FROM #SR_HADRServices WHERE Mirror = 1) RAISERROR ('Collect Mirroring info',0,1) WITH NOWAIT;
@@ -2874,12 +2918,19 @@ WHILE @@FETCH_STATUS = 0
 BEGIN
     
 	INSERT #SR_Mirror 
-	EXEC msdb.sys.sp_dbmmonitorresults @DBMirror, 0,1 
-    FETCH NEXT FROM curDBMirror INTO @DBMirror
+	EXEC msdb.sys.sp_dbmmonitorresults @DBMirror, 0,1 ;
+    FETCH NEXT FROM curDBMirror INTO @DBMirror;
 END
-CLOSE curDBMirror
-DEALLOCATE curDBMirror
+CLOSE curDBMirror;
+DEALLOCATE curDBMirror;
+		INSERT @DebugError VALUES  ('Mirroring info',NULL,DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
+	END TRY
+	BEGIN CATCH
+		INSERT @DebugError VALUES  ('Mirroring info',ERROR_MESSAGE(),DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
+	END CATCH
 --------------------------------------------------------------------------------------------------------
+	BEGIN TRY
+		SET @DebugStartTime = GETDATE();
 IF @debug = 1 RAISERROR ('Collect Maintplan Plans Logs',0,1) WITH NOWAIT;
     DECLARE @line varchar(400)
     DECLARE @1MB    DECIMAL;
@@ -2942,7 +2993,91 @@ IF @debug = 1 RAISERROR ('Collect Maintplan Plans Logs',0,1) WITH NOWAIT;
 	FROM   msdb.dbo.sysmaintplan_plans mp
             OUTER APPLY(SELECT SUM(SizeInMB)[SizeInMB],COUNT_BIG(1)[NumberOfFiles],MIN(FileDate)[OldFile] FROM #MPLoutput WHERE FilePath LIKE mp.name + '%')F
 	OPTION(RECOMPILE);
-	IF OBJECT_ID('tempdb..#MPLoutput') IS NOT NULL DROP TABLE #MPLoutput 
+	IF OBJECT_ID('tempdb..#MPLoutput') IS NOT NULL DROP TABLE #MPLoutput;
+		INSERT @DebugError VALUES  ('Maintplan Plans Logs',NULL,DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
+	END TRY
+	BEGIN CATCH
+		INSERT @DebugError VALUES  ('Maintplan Plans Logs',ERROR_MESSAGE(),DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
+	END CATCH
+--------------------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------------------
+	BEGIN TRY
+		SET @DebugStartTime = GETDATE();
+IF @debug = 1 RAISERROR ('Collect Logins wite sa privelige',0,1) WITH NOWAIT;
+--Get All Logins wite sa privelige
+DECLARE @ADGrpupMembers TABLE
+    (
+      [account name] sysname ,
+      [type] sysname ,
+      [privilege] sysname ,
+      [mapped login name] sysname ,
+      [permission path] sysname
+    );
+CREATE TABLE #SR_SysAdmin
+    (
+      [name] sysname NULL,
+      [type] sysname NULL,
+	  [ParentGroup] sysname NULL
+    );
+DECLARE @Groups TABLE ([name] sysname,
+	  [ParentGroup] sysname NULL);
+
+	INSERT	#SR_SysAdmin
+    SELECT  p.[name] AS [Name] ,
+            p.type_desc ,NULL
+    FROM    sys.server_principals r
+            INNER JOIN sys.server_role_members m ON r.principal_id = m.role_principal_id
+            INNER JOIN sys.server_principals p ON p.principal_id = m.member_principal_id
+    WHERE   r.[type] = 'R'
+            AND r.[name] = N'sysadmin'
+			AND r.is_disabled = 0
+			AND p.type_desc != 'WINDOWS_GROUP'
+	OPTION(RECOMPILE);
+
+	INSERT	@Groups
+	SELECT  p.[name] AS [Name],NULL
+    FROM    sys.server_principals r
+            INNER JOIN sys.server_role_members m ON r.principal_id = m.role_principal_id
+            INNER JOIN sys.server_principals p ON p.principal_id = m.member_principal_id
+    WHERE   r.[type] = 'R'
+            AND r.[name] = N'sysadmin'
+			AND r.is_disabled = 0
+			AND p.type_desc = 'WINDOWS_GROUP'
+	OPTION(RECOMPILE);
+	
+	DECLARE @GroupNAme sysname;
+	DECLARE @PrevGroupNAme sysname;
+	
+	WHILE EXISTS (SELECT TOP 1 1 FROM @Groups WHERE name NOT IN (SELECT name FROM #SR_SysAdmin WHERE [type] = 'WINDOWS_GROUP'))
+	BEGIN
+
+		DELETE FROM @ADGrpupMembers;
+		SELECT TOP 1 @GroupNAme = [name],@PrevGroupNAme = ParentGroup FROM @Groups WHERE name NOT IN (SELECT name FROM #SR_SysAdmin WHERE [type] = 'WINDOWS_GROUP') OPTION(RECOMPILE);
+		INSERT #SR_SysAdmin VALUES  ( @GroupNAme,'WINDOWS_GROUP',@PrevGroupNAme);
+		DELETE FROM @Groups WHERE [name] = @GroupNAme OPTION(RECOMPILE);
+
+		INSERT @ADGrpupMembers
+		EXEC xp_logininfo @GroupNAme, 'members';
+
+		INSERT	#SR_SysAdmin
+		SELECT	[account name] ,
+                type ,@GroupNAme
+		FROM	@ADGrpupMembers
+		WHERE	[type] != 'WINDOWS_GROUP'
+		OPTION(RECOMPILE);
+
+		INSERT	@Groups
+		SELECT	[account name],@GroupNAme
+		FROM	@ADGrpupMembers
+		WHERE	[type] = 'WINDOWS_GROUP'
+		OPTION(RECOMPILE);
+	END
+
+		INSERT @DebugError VALUES  ('Logins wite sa privelige',NULL,DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
+	END TRY
+	BEGIN CATCH
+		INSERT @DebugError VALUES  ('Logins wite sa privelige',ERROR_MESSAGE(),DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
+	END CATCH
 --------------------------------------------------------------------------------------------------------
 --------------------------------------------------------------------------------------------------------
 IF OBJECT_ID('tempdb..#SR_Replication', 'u') IS NOT NULL DROP TABLE #SR_Replication;
@@ -3485,6 +3620,8 @@ WHERE	CheckID NOT IN (-1,1,2,14,6,4,55,158,155,1065,1057,1039,1036,1031,1015,101
                             FOR XML AUTO , TYPE , ELEMENTS XSINIL ) AS LoginIssue,
 							( SELECT    Data.* FROM      #SR_RemoteServer Data
                             FOR XML AUTO , TYPE , ELEMENTS XSINIL ) AS RemoteServerNode,
+							( SELECT    Data.* FROM      #SR_SysAdmin Data
+                            FOR XML AUTO , TYPE , ELEMENTS XSINIL ) AS SysAdmin,
 							( SELECT    Data.* FROM      @DebugError Data WHERE	ISNULL(Data.Error,'') <> '' OR Data.Duration > 1
                             FOR XML AUTO , TYPE , ELEMENTS XSINIL ) AS DebugError,
 							( SELECT    Data.* FROM      #sp_Blitz Data
@@ -3542,6 +3679,7 @@ WHERE	CheckID NOT IN (-1,1,2,14,6,4,55,158,155,1065,1057,1039,1036,1031,1015,101
 		DROP TABLE #SR_Replication;
 		DROP TABLE #SR_WaitStat;
 		DROP TABLE #SR_LoginIssue;
+		DROP TABLE #SR_SysAdmin;
   --  END TRY
   --  BEGIN CATCH 
        
