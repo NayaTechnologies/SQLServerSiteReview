@@ -111,7 +111,8 @@ Input Parameters:
 	BEGIN
 		SELECT	@IsLinux = 1,
 				@OperatingSystem = host_distribution + ' ' + host_release
-		FROM	sys.dm_os_host_info  
+		FROM	sys.dm_os_host_info 
+		WHERE	host_platform = 'Linux'
 	END
 
     IF EXISTS ( SELECT TOP 1 1 FROM master.sys.configurations C WHERE C.name = 'show advanced options' AND C.value = 0 )
