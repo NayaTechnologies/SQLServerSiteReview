@@ -53,7 +53,7 @@ BEGIN
        DECLARE @ClientVersion NVARCHAR(15);
        DECLARE @ThankYou NVARCHAR(4000);
        DECLARE @Print NVARCHAR(4000);
-       SET @ClientVersion = '1.505';
+       SET @ClientVersion = '1.506';
        SET @ThankYou = 'Thank you for using our SQL Server Site Review tool.
 --------------------------------------------------------------------------------
 Find out more in our site - www.NAYA-Technologies.co.il
@@ -114,7 +114,6 @@ Input Parameters:
 		FROM	sys.dm_os_host_info 
 		WHERE	host_platform = 'Linux'
 	END
-
     IF EXISTS ( SELECT TOP 1 1 FROM master.sys.configurations C WHERE C.name = 'show advanced options' AND C.value = 0 )
     BEGIN
               IF @debug = 1 RAISERROR ('Turn on "show advanced options"',0,1) WITH NOWAIT;
@@ -1343,7 +1342,6 @@ OPTION  ( RECOMPILE );';
                                 'PagingFiles' ,
                                 value
                         FROM    @reg;
-
                 IF NOT EXISTS ( SELECT TOP 1 1 FROM #SR_reg WHERE Service = 'Windows Page File' )
 					INSERT  #SR_reg
                     SELECT  'Windows Page File' ,
@@ -2076,6 +2074,7 @@ OPTION  ( RECOMPILE );';
     IF OBJECT_ID('tempdb..#VolumeName') IS NULL
 		CREATE TABLE #VolumeName (
 			[Drive] VARCHAR(1000) NULL,
+			TreeSize VARCHAR(1000) NULL,
 			Freesize VARCHAR(1000) NULL,
 			VolumeName VARCHAR(1000) NULL);
 	IF @IsLinux = 0
@@ -2169,7 +2168,6 @@ OPTION(RECOMPILE);');
         BEGIN CATCH
 			SET @ErrorLog = ERROR_MESSAGE();
         END CATCH;
-
 		INSERT	#SR_Offset
         SELECT  RTRIM(LTRIM(SUBSTRING(line, 1, CHARINDEX('|', line) - 1))) Volume,
                 CONVERT(BIGINT,SO.StartingOffset/1024)  [MB] 
@@ -2214,7 +2212,6 @@ OPTION(RECOMPILE);');
 		        LEFT(MF.physical_name, 3)
 		FROM    sys.master_files MF
 		OPTION(RECOMPILE);
-
 		INSERT	#SR_BlockSize
         SELECT  DL.DriveLeter ,
                 RTRIM(LTRIM(REPLACE(O.line, DL.DriveLeter, ''))) [BlockSize]
@@ -2365,7 +2362,6 @@ sys.dm_os_volume_stats - Returns information about the operating system volume (
 			  CREATE TABLE #SR_VersionBug(Version NVARCHAR(30) NOT NULL,
 				  Detail NVARCHAR(MAX) NULL,
 				  IntDetail INT NULL);
-
               --#VersionsBugs
 			  IF @IsLinux = 0
 			  BEGIN
@@ -2498,27 +2494,22 @@ IF OBJECT_ID('tempdb..#temp') IS NOT NULL
             Field VARCHAR(255) ,
             [VALUE] VARCHAR(255)
         );
-
     DECLARE @DBName sysname ,
                      @SQLcmd VARCHAR(4000);
-
     DECLARE dbccpage CURSOR LOCAL FAST_FORWARD READ_ONLY FOR 
         SELECT  name
         FROM    sys.databases
         WHERE   state = 0
                 AND database_id NOT IN (2,DB_ID())
               OPTION(RECOMPILE);
-
     OPEN dbccpage;
     FETCH NEXT FROM dbccpage INTO @DBName;
     WHILE @@FETCH_STATUS = 0
         BEGIN
             SET @SQLcmd = 'Use [' + @DBName + '];' + CHAR(10) + CHAR(13);
             SET @SQLcmd = @SQLcmd + 'DBCC Page ( [' + @DBName + '],1,9,3) WITH TABLERESULTS,NO_INFOMSGS;' + CHAR(10) + CHAR(13);
-
             INSERT  INTO #temp EXECUTE ( @SQLcmd);
             SET @SQLcmd = '';
-
             INSERT  INTO #DBCCRes ( DBName , dbccLastKnownGood , RowNum)
             SELECT  @DBName ,
                     [VALUE] ,
@@ -2526,9 +2517,7 @@ IF OBJECT_ID('tempdb..#temp') IS NOT NULL
             FROM    #temp
             WHERE   Field = 'dbi_dbccLastKnownGood'
                      OPTION(RECOMPILE);
-
             TRUNCATE TABLE #temp;
-
             FETCH NEXT FROM dbccpage INTO @DBName;
         END;
     CLOSE dbccpage;
@@ -2690,7 +2679,6 @@ GROUP BY type_desc,type
 HAVING  COUNT_BIG(1)  > 10
 ORDER BY 2,1
 OPTION(RECOMPILE);
-
  -- Memory Optimize Tables Check by Maxim Shmidt(NAYA)
     IF ( SELECT SERVERPROPERTY('ProductMajorVersion')) >= '12'
     BEGIN   
@@ -2853,42 +2841,41 @@ OPTION(RECOMPILE);');
                      WHERE   state = 0
                                   AND database_id NOT IN (2,1)
                      OPTION(RECOMPILE);
-
-    OPEN cuMaxIdent;
-    FETCH NEXT FROM cuMaxIdent INTO @DBName;
-    WHILE @@FETCH_STATUS = 0
-    BEGIN
+	OPEN cuMaxIdent;
+	FETCH NEXT FROM cuMaxIdent INTO @DBName;
+	WHILE @@FETCH_STATUS = 0
+	BEGIN
        SET @cmd = N'USE ' + QUOTENAME(@DBName) + ';
-       DECLARE @Innercmd NVARCHAR(MAX);
-    SELECT  @Innercmd = ISNULL(@Innercmd + '' Union All'' + CHAR(13), '''')
-            + ''Select ''''MaxIdentity'''' [Type],DB_NAME() DB, '''''' +
-                     OBJECT_SCHEMA_NAME(Cl.object_id) + ''.'' + T.name +
-                     '''''' Object, ''''Column '' + Cl.name +
-                     '''''' ObjectType, Ident_Current(''''['' +
-                     OBJECT_SCHEMA_NAME(Cl.object_id) + ''].['' +
-                     OBJECT_NAME(Cl.object_id) + '']'''') MaxIdentity, Case '''''' +
-                     Tp.name +
-                     '''''' When ''''int'''' Then 2147483647 
-                                   When ''''smallint'''' then 32767 
-                                   When ''''tinyint'''' Then 255 
-                                   When ''''bigint'''' Then  9223372036854775807 
-                                   Else Null End UpperLimit''
-    FROM    sys.columns Cl
-            INNER JOIN sys.types Tp ON Cl.system_type_id = Tp.system_type_id
-                                       AND Cl.user_type_id = Tp.user_type_id
-            INNER JOIN sys.tables T ON Cl.object_id = T.object_id
-    WHERE   Tp.name IN ( ''int'', ''smallint'', ''bigint'', ''tinyint'' )
-            AND Cl.is_identity = 1
-       OPTION(RECOMPILE);
+DECLARE @Innercmd NVARCHAR(MAX);
+SELECT  @Innercmd = ISNULL(@Innercmd + '' Union All'' + CHAR(13), '''')
+        + ''Select ''''MaxIdentity'''' [Type],DB_NAME() DB, '''''' +
+                    OBJECT_SCHEMA_NAME(Cl.object_id) + ''.'' + T.name +
+                    '''''' Object, ''''Column '' + Cl.name +
+                    '''''' ObjectType, Ident_Current(''''['' +
+                    OBJECT_SCHEMA_NAME(Cl.object_id) + ''].['' +
+                    OBJECT_NAME(Cl.object_id) + '']'''') MaxIdentity, Case '''''' +
+                    Tp.name +
+                    '''''' When ''''int'''' Then 2147483647 
+                                When ''''smallint'''' then 32767 
+                                When ''''tinyint'''' Then 255 
+                                When ''''bigint'''' Then  9223372036854775807 
+                                Else Null End UpperLimit''
+FROM    sys.columns Cl
+        INNER JOIN sys.types Tp ON Cl.system_type_id = Tp.system_type_id
+                                    AND Cl.user_type_id = Tp.user_type_id
+        INNER JOIN sys.tables T ON Cl.object_id = T.object_id
+WHERE   Tp.name IN ( ''int'', ''smallint'', ''bigint'', ''tinyint'' )
+        AND Cl.is_identity = 1
+    OPTION(RECOMPILE);
        
-    IF ( SELECT SERVERPROPERTY(''ProductMajorVersion'')) >= ''11''
-    SET @Innercmd = @Innercmd + '' Union All'' + CHAR(13) + ''Select ''''MaxIdentity'''' [Type],DB_NAME() DB, Schema_Name(S.schema_id) + ''''.'''' + S.name Object, ''''Sequence'''' ObjectType, S.current_value MaxIdentity, S.maximum_value UpperLimit From   sys.sequences S Inner Join sys.types Tp On S.system_type_id=Tp.system_type_id And S.user_type_id=Tp.user_type_id Where       Tp.name=''''int'''''';
-    SET @Innercmd = ''With T As'' +  CHAR(13) +  ''('' +  @Innercmd + '')'' + CHAR(13) +
-                      ''INSERT #SR_DBProp
-                                    Select [Type],DB,''''Table '''' + T.Object + '''' on '''' + ObjectType + '''' limit identity is '''' + convert(varchar(50),MaxIdentity) + ''''/'''' +  convert(varchar(50),UpperLimit), NULL [Link] From T 
-                                    WHERE Cast(MaxIdentity As Float)/Cast(UpperLimit As Float) > 0.8
-                                    Order By Cast(MaxIdentity As Float)/Cast(UpperLimit As Float) Desc;'';
-       EXEC(@Innercmd);
+IF ( SELECT SERVERPROPERTY(''ProductMajorVersion'')) >= ''11''
+SET @Innercmd = @Innercmd + '' Union All'' + CHAR(13) + ''Select ''''MaxIdentity'''' [Type],DB_NAME() DB, Schema_Name(S.schema_id) + ''''.'''' + S.name Object, ''''Sequence'''' ObjectType, S.current_value MaxIdentity, S.maximum_value UpperLimit From   sys.sequences S Inner Join sys.types Tp On S.system_type_id=Tp.system_type_id And S.user_type_id=Tp.user_type_id Where       Tp.name=''''int'''''';
+SET @Innercmd = ''With T As'' +  CHAR(13) +  ''('' +  @Innercmd + '')'' + CHAR(13) +
+                    ''INSERT #SR_DBProp
+                                Select [Type],DB,''''Table '''' + T.Object + '''' on '''' + ObjectType + '''' limit identity is '''' + convert(varchar(50),MaxIdentity) + ''''/'''' +  convert(varchar(50),UpperLimit), NULL [Link] From T 
+                                WHERE Cast(MaxIdentity As Float)/Cast(UpperLimit As Float) > 0.8
+                                Order By Cast(MaxIdentity As Float)/Cast(UpperLimit As Float) Desc;'';
+    EXEC(@Innercmd);
        ';
        EXEC (@cmd);
             FETCH NEXT FROM cuMaxIdent INTO @DBName;
@@ -2951,7 +2938,6 @@ SELECT  ISNULL(CONVERT(BIT,SERVERPROPERTY('IsHadrEnabled')),0) [AlwaysOn] ,
        BEGIN CATCH
               INSERT @DebugError VALUES  ('HADR Services',ERROR_MESSAGE(),DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
        END CATCH
-
 --------------------------------------------------------------------------------------------------------
        BEGIN TRY
               SET @DebugStartTime = GETDATE();
@@ -3191,7 +3177,6 @@ DEALLOCATE curDBMirror;
 		SizeInMB DECIMAL(13,2)  NULL,
 		NumberOfFiles BIGINT NULL,
 		[OldFile] VARCHAR(100) NULL);
-
 	IF @IsLinux = 0
 	BEGIN
        BEGIN TRY
@@ -3768,7 +3753,6 @@ CREATE TABLE #sp_Blitz (
                      ,@OutputSchemaName = 'dbo'
                      ,@OutputTableName = 'sp_BlitzTableOutput'
                      ,@OutputXMLasNVARCHAR =1;
-
                      EXECUTE [dbo].[sp_Blitz] 
                         @CheckUserDatabaseObjects
                        ,@CheckProcedureCache
@@ -3937,7 +3921,6 @@ WHERE  CheckID NOT IN (-1,1,2,14,6,4,55,158,155,1065,1057,1039,1036,1031,1015,10
 					    SELECT TOP 1 Col FROM master.dbo.SiteReview;
 					END
            END
-
 		DROP TABLE #SR_Software;
         DROP TABLE #SR_Configuration;
         DROP TABLE #SR_Databases;
