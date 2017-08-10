@@ -44,35 +44,40 @@ BEGIN
 			AND OS.parent_node_id < 64
 	GROUP BY OS.parent_node_id;
 
-	
-	IF @NoOfNUMA = 1
+	IF NOT EXISTS (SELECT TOP 1 1 FROM Client.Software S WHERE S.guid = @guid AND S.Status = 1)
 	BEGIN
-		   IF @logicalCPUPerNuma > 8 
-		   BEGIN
-			   IF EXISTS(SELECT TOP 1 1 FROM sys.dm_os_sys_info OS WHERE OS.virtual_machine_type = 1) --Virtual
-				  BEGIN
-						 SET @NoOfNUMA = 2;
-						 --PRINT 'On this VM "Hot Plug" is enabled';
-						 SET @MaxDOP = 8;
-				  END
-		   END
-		   ELSE 
-		   BEGIN
-			   SET @MaxDOP = @logicalCPUPerNuma;
-		   END
+		IF @NoOfNUMA = 1
+		BEGIN
+			   IF @logicalCPUPerNuma > 8 
+			   BEGIN
+				   IF EXISTS(SELECT TOP 1 1 FROM sys.dm_os_sys_info OS WHERE OS.virtual_machine_type = 1) --Virtual
+					  BEGIN
+							 SET @NoOfNUMA = 2;
+							 --PRINT 'On this VM "Hot Plug" is enabled';
+							 SET @MaxDOP = 8;
+					  END
+			   END
+			   ELSE 
+			   BEGIN
+				   SET @MaxDOP = @logicalCPUPerNuma;
+			   END
+		END
+		ELSE
+		BEGIN
+			   IF @logicalCPUPerNuma > 8 
+			   BEGIN
+				   SET @MaxDOP = 8;
+			   END
+			   ELSE 
+			   BEGIN
+				   SET @MaxDOP = @logicalCPUPerNuma; 
+			   END
+		END
 	END
 	ELSE
-	BEGIN
-		   IF @logicalCPUPerNuma > 8 
-		   BEGIN
-			   SET @MaxDOP = 8;
-		   END
-		   ELSE 
-		   BEGIN
-			   SET @MaxDOP = @logicalCPUPerNuma; 
-		   END
-	END
-
+    BEGIN
+        SET @MaxDOP = 1;
+    END
 
 --https://support.microsoft.com/en-us/kb/2806535
 --https://www.brentozar.com/archive/2014/11/many-cpus-parallel-query-using-sql-server/
@@ -92,7 +97,14 @@ DECLARE @Ver NVARCHAR(128)
 	WHEN @PhysicalMemory <= 8000 THEN 6000
 	ELSE @PhysicalMemory * 0.9 END
 	--5120 0.9
+	DECLARE @Ignore TABLE(name sysname NOT NULL);
+	INSERT @Ignore
+	VALUES  ( 'max worker threads'),('show advanced options'),('cost threshold for parallelism'),('max degree of parallelism');
 
+	IF EXISTS(SELECT TOP 1 1 FROM Client.MachineSettings MS WHERE MS.Edition LIKE '%Express Edition%' AND MS.guid = @guid)
+	BEGIN
+	    INSERT @Ignore VALUES ('Agent XPs');
+	END
     SELECT  cSP.[name] ,
             cSP.[value] value ,
             c.[Default] ,
@@ -150,9 +162,10 @@ DECLARE @Ver NVARCHAR(128)
             0 [Default] ,
             @MaxDOP BestPractice,
             cSP.[value],
-			'https://support.microsoft.com/en-us/kb/2806535'[Link],
+			ISNULL(ca.Link,'https://support.microsoft.com/en-us/kb/2806535')[Link],
 			'Blue'[Color]
     FROM    [Client].[spconfigure] cSP
+			OUTER APPLY (SELECT TOP 1 'https://msdn.microsoft.com/en-us/library/dd979074(v=crm.6).aspx' [Link] FROM Client.Software S WHERE S.guid = @guid AND S.Software = 'CRMDynamics' AND S.Status = 1)ca
 	WHERE   cSP.guid = @guid
 			AND cSP.name = 'max degree of parallelism'
 			AND @MaxDOP != cSP.value

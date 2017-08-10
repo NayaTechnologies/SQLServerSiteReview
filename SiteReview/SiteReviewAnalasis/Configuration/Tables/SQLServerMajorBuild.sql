@@ -1,6 +1,11 @@
 ﻿CREATE TABLE [Configuration].[SQLServerMajorBuild] (
-    [Major] INT NOT NULL,
-    [Year]  INT NOT NULL,
-    CONSTRAINT [PK_SQLServerMajorBuild] PRIMARY KEY CLUSTERED ([Major] ASC) ON [Configuration]
+    [ID]        INT       IDENTITY (1, 1) NOT NULL,
+    [Major]     INT       NOT NULL,
+    [FullMajor] INT       NOT NULL,
+    [Year]      INT       NOT NULL,
+    [Name]      [sysname] NOT NULL,
+    CONSTRAINT [PK_SQLServerMajorBuild] PRIMARY KEY CLUSTERED ([ID] ASC) ON [Configuration]
 );
+
+
 

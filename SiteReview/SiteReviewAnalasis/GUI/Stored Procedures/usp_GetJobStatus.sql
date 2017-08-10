@@ -29,7 +29,8 @@ Reason - ',LEFT(M.msg,200),IIF(LEN(M.msg)>200,'...','')),'Red' Color
 			END msg)M
 	WHERE	JO.Guid = @guid
 	UNION ALL 
-	SELECT	mp.MaintenancePlanName,'<B>Maintplan Plans</B> conteins ' + CONVERT(VARCHAR(25),mp.NumberOfFiles) + ' <a href="https://www.mssqltips.com/sqlservertip/3225/sql-server-maintenance-plans-reporting-and-logging/">log files</a>. about ' + CONVERT(VARCHAR(25),mp.SizeInMB) + 'MB.','Black' Color
+	SELECT	mp.MaintenancePlanName,'<B>Maintplan Plans</B> conteins ' + CONVERT(VARCHAR(25),mp.NumberOfFiles) + ' <a href="https://www.mssqltips.com/sqlservertip/3225/sql-server-maintenance-plans-reporting-and-logging/">log files</a>. about ' + IIF(mp.SizeInMB = 0,'~1',CONVERT(VARCHAR(25),mp.SizeInMB)) + 'MB.','Black' Color
 	FROM	[Client].[MaintenancePlanFiles] mp
 	WHERE	mp.guid = @guid
+			AND mp.NumberOfFiles > 0 
 END

@@ -1,9 +1,9 @@
-﻿
--- =============================================
+﻿-- =============================================
 -- Author:		Sharon
 -- Create date: 2016
 -- Update date: 2016/06/08 Sharon
 --				2016/07/21 Sharon Utility.ufn_Util_clr_RegexReplace(Version,'Microsoft SQL Server [\d]+ \- ([\d]+\.[\d]+\.[\d]+\.[\d]+)[\W\w]*','$1',0)
+--				2017/05/17 Sharon Add @PathDevide for linux support.
 -- Description:	
 -- =============================================
 CREATE PROCEDURE [GUI].[usp_GetTempdbSettings] @guid UNIQUEIDENTIFIER
@@ -15,6 +15,7 @@ BEGIN
 	DECLARE @FilePath NVARCHAR(4000);
 	DECLARE @NumberOfDataFiles INT;
 	DECLARE @NumberOfCPU INT;
+	DECLARE @PathDevide CHAR(1) = '\';
 
 	SELECT	@FilePath = df.Physical_Name
 	FROM	[Client].[DatabaseFiles] df 
@@ -22,7 +23,8 @@ BEGIN
 			AND df.Database_Name = 'tempdb'
 			AND df.File_Type = 'Data'
 			AND df.file_id = 1;
-	
+	IF charindex('/',@FilePath) > 0
+		SET @PathDevide = '/';
 	SELECT	@NumberOfDataFiles = COUNT(1)
 	FROM	[Client].[DatabaseFiles] df 
 	WHERE	df.guid = @Guid
@@ -74,7 +76,7 @@ BEGIN
 					END [ImageID])I
 			CROSS APPLY(select top 1 
 			CASE WHEN RDF.Database_Name IS NOT NULL THEN @FilePath ELSE 
-			LEFT(@FilePath,LEN(@FilePath) - charindex('\',reverse(@FilePath),1) + 1) + REPLACE(REVERSE(LEFT(REVERSE(@FilePath),CHARINDEX('\', REVERSE(@FilePath), 1) - 1)),'.mdf',
+			LEFT(@FilePath,LEN(@FilePath) - charindex(@PathDevide,reverse(@FilePath),1) + 1) + REPLACE(REVERSE(LEFT(REVERSE(@FilePath),CHARINDEX(@PathDevide, REVERSE(@FilePath), 1) - 1)),'.mdf',
 									convert(varchar(3),Num.n) +'.ndf') END FileName)P
 			INNER JOIN Configuration.Images Im ON Im.ID = I.ImageID
 	--WHERE	Num.n <= (select case when SP.logicalCPU > 8 then 8 else SP.logicalCPU end from Client.ServerProporties SP WHERE SP.guid = @Guid)

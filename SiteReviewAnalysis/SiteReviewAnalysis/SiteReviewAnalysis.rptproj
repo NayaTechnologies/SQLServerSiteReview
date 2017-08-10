@@ -29,12 +29,20 @@
       <FullPath>GeneralInformation.rsd</FullPath>
     </ProjectItem>
     <ProjectItem>
+      <Name>GetBlitz.rsd</Name>
+      <FullPath>GetBlitz.rsd</FullPath>
+    </ProjectItem>
+    <ProjectItem>
       <Name>GetCPU.rsd</Name>
       <FullPath>GetCPU.rsd</FullPath>
     </ProjectItem>
     <ProjectItem>
       <Name>GetCPUBenchmarkLink.rsd</Name>
       <FullPath>GetCPUBenchmarkLink.rsd</FullPath>
+    </ProjectItem>
+    <ProjectItem>
+      <Name>GetHeavyQueries.rsd</Name>
+      <FullPath>GetHeavyQueries.rsd</FullPath>
     </ProjectItem>
     <ProjectItem>
       <Name>GetIsPropertyOn.rsd</Name>
@@ -47,6 +55,14 @@
     <ProjectItem>
       <Name>GetMachineSQLSettings.rsd</Name>
       <FullPath>GetMachineSQLSettings.rsd</FullPath>
+    </ProjectItem>
+    <ProjectItem>
+      <Name>GetReplication.rsd</Name>
+      <FullPath>GetReplication.rsd</FullPath>
+    </ProjectItem>
+    <ProjectItem>
+      <Name>GetSysadmin.rsd</Name>
+      <FullPath>GetSysadmin.rsd</FullPath>
     </ProjectItem>
     <ProjectItem>
       <Name>GetTableOfContents.rsd</Name>
@@ -89,12 +105,8 @@
       <FullPath>VolumeBlockSize.rsd</FullPath>
     </ProjectItem>
     <ProjectItem>
-      <Name>GetBlitz.rsd</Name>
-      <FullPath>GetBlitz.rsd</FullPath>
-    </ProjectItem>
-    <ProjectItem>
-      <Name>GetReplication.rsd</Name>
-      <FullPath>GetReplication.rsd</FullPath>
+      <Name>GetDatabaseSizeChart.rsd</Name>
+      <FullPath>GetDatabaseSizeChart.rsd</FullPath>
     </ProjectItem>
   </DataSets>
   <Reports>

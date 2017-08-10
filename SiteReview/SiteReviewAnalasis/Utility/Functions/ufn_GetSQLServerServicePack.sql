@@ -18,7 +18,7 @@ BEGIN
 	ELSE IF @ProductLevel = 'SP7' SET @ResultString = 'Service Pack 7'
 	ELSE IF @ProductLevel = 'SP8' SET @ResultString = 'Service Pack 8'
 	ELSE IF @ProductLevel = 'SP9' SET @ResultString = 'Service Pack 9'
-	SELECT @ResultString = 'Microsoft SQL Server ' + 
+	SELECT TOP 1 @ResultString = 'Microsoft SQL Server ' + 
 			CASE WHEN b.Major = 10 THEN CASE WHEN PARSENAME(CONVERT(VARCHAR(32), @Ver), 3) = '50' THEN '2008 R2' ELSE '2008' END
 			ELSE CONVERT(VARCHAR(8),b.Year) END + ' ' + @ResultString
 	FROM	[Configuration].[SQLServerMajorBuild] b 

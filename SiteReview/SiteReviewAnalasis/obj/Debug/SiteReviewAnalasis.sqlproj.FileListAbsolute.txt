@@ -1,0 +1,8 @@
+E:\Backup\GIT\SQLServerSiteReview\SiteReview\SiteReviewAnalasis\bin\Debug\SiteReviewAnalasis.dacpac
+E:\Backup\GIT\SQLServerSiteReview\SiteReview\SiteReviewAnalasis\obj\Debug\SiteReviewAnalasis.sqlprojResolveAssemblyReference.cache
+E:\Backup\GIT\SQLServerSiteReview\SiteReview\SiteReviewAnalasis\obj\Debug\Model.xml
+E:\Backup\GIT\SQLServerSiteReview\SiteReview\SiteReviewAnalasis\obj\Debug\refactor.xml
+E:\Backup\GIT\SQLServerSiteReview\SiteReview\SiteReviewAnalasis\obj\Debug\postdeploy.sql
+E:\Backup\GIT\SQLServerSiteReview\SiteReview\SiteReviewAnalasis\obj\Debug\predeploy.sql
+E:\Backup\GIT\SQLServerSiteReview\SiteReview\SiteReviewAnalasis\obj\Debug\SiteReviewAnalasis.dll
+E:\Backup\GIT\SQLServerSiteReview\SiteReview\SiteReviewAnalasis\obj\Debug\SiteReviewAnalasis.pdb

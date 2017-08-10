@@ -720,6 +720,98 @@
         </Field>
       </Fields>
     </DataSet>
+    <DataSet Name="GetSysadmin">
+      <SharedDataSet>
+        <SharedDataSetReference>GetSysadmin</SharedDataSetReference>
+        <QueryParameters>
+          <QueryParameter Name="@Guid">
+            <Value>=Parameters!Report.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+      </SharedDataSet>
+      <Fields>
+        <Field Name="Name">
+          <DataField>Name</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Groups">
+          <DataField>Groups</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="GetHeavyQueries">
+      <SharedDataSet>
+        <SharedDataSetReference>GetHeavyQueries</SharedDataSetReference>
+        <QueryParameters>
+          <QueryParameter Name="@Guid">
+            <Value>=Parameters!Report.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+      </SharedDataSet>
+      <Fields>
+        <Field Name="Type">
+          <DataField>Type</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="database_name">
+          <DataField>Database</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="Query">
+          <DataField>Query</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="AvgDuration">
+          <DataField>AvgDuration</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="AvgScore">
+          <DataField>AvgScore</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="ExecutionCount">
+          <DataField>ExecutionCount</DataField>
+          <rd:TypeName>System.Int64</rd:TypeName>
+        </Field>
+        <Field Name="LastExecutionTime">
+          <DataField>LastExecutionTime</DataField>
+          <rd:TypeName>System.DateTime</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
+    <DataSet Name="GetDatabaseSizeChart">
+      <SharedDataSet>
+        <SharedDataSetReference>GetDatabaseSizeChart</SharedDataSetReference>
+        <QueryParameters>
+          <QueryParameter Name="@Guid">
+            <Value>=Parameters!Report.Value</Value>
+          </QueryParameter>
+        </QueryParameters>
+      </SharedDataSet>
+      <Fields>
+        <Field Name="database_id">
+          <DataField>database_id</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="Database_Name">
+          <DataField>Database_Name</DataField>
+          <rd:TypeName>System.String</rd:TypeName>
+        </Field>
+        <Field Name="DataSize">
+          <DataField>DataSize</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="LogSize">
+          <DataField>LogSize</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+        <Field Name="Total">
+          <DataField>Total</DataField>
+          <rd:TypeName>System.Int32</rd:TypeName>
+        </Field>
+      </Fields>
+    </DataSet>
   </DataSets>
   <ReportSections>
     <ReportSection>
@@ -818,7 +910,7 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
               </Paragraph>
             </Paragraphs>
             <rd:DefaultName>Textbox45</rd:DefaultName>
-            <Top>24.65296in</Top>
+            <Top>28.77796in</Top>
             <Left>0.10622in</Left>
             <Height>2.65555in</Height>
             <Width>7.58333in</Width>
@@ -861,7 +953,7 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
                 </Action>
               </Actions>
             </ActionInfo>
-            <Top>27.42775in</Top>
+            <Top>29.05275in</Top>
             <Left>2.34367in</Left>
             <Height>0.38713in</Height>
             <Width>2.88755in</Width>
@@ -878,7 +970,7 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
             </Style>
           </Textbox>
           <Line Name="Line1">
-            <Top>24.47363in</Top>
+            <Top>28.59863in</Top>
             <Left>0.04419in</Left>
             <Height>0in</Height>
             <Width>7.64536in</Width>
@@ -928,8 +1020,8 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
               </Paragraph>
             </Paragraphs>
             <rd:DefaultName>Textbox36</rd:DefaultName>
-            <Top>19.75953in</Top>
-            <Left>0.09524in</Left>
+            <Top>25.15302in</Top>
+            <Left>0.10514in</Left>
             <Height>0.36667in</Height>
             <Width>3.69363in</Width>
             <ZIndex>3</ZIndex>
@@ -1108,7 +1200,7 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
               </Border>
             </Style>
           </Tablix>
-          <Rectangle Name="Rectangle1">
+          <Rectangle Name="RecGeneralInfo">
             <ReportItems>
               <Textbox Name="TxtBoxGeneralInformation">
                 <CanGrow>true</CanGrow>
@@ -1330,7 +1422,7 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
               </Border>
             </Style>
           </Rectangle>
-          <Rectangle Name="Rectangle3">
+          <Rectangle Name="RecMachineConf">
             <ReportItems>
               <Textbox Name="Textbox40">
                 <CanGrow>true</CanGrow>
@@ -2993,17 +3085,32 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
                             <ChartCategoryHierarchy>
                               <ChartMembers>
                                 <ChartMember>
-                                  <Group Name="Chart1_CategoryGroup2">
+                                  <Group Name="Chart2_CategoryGroup">
                                     <GroupExpressions>
-                                      <GroupExpression>=Fields!TotalStr1.Value</GroupExpression>
+                                      <GroupExpression>=Fields!Free1.Value</GroupExpression>
                                     </GroupExpressions>
                                   </Group>
                                   <SortExpressions>
                                     <SortExpression>
-                                      <Value>=Fields!TotalStr1.Value</Value>
+                                      <Value>=Fields!Free1.Value</Value>
                                     </SortExpression>
                                   </SortExpressions>
-                                  <Label>=Fields!TotalStr1.Value</Label>
+                                  <ChartMembers>
+                                    <ChartMember>
+                                      <Group Name="Chart2_CategoryGroup1">
+                                        <GroupExpressions>
+                                          <GroupExpression>=Fields!Full1.Value</GroupExpression>
+                                        </GroupExpressions>
+                                      </Group>
+                                      <SortExpressions>
+                                        <SortExpression>
+                                          <Value>=Fields!Full1.Value</Value>
+                                        </SortExpression>
+                                      </SortExpressions>
+                                      <Label>=Fields!Full1.Value</Label>
+                                    </ChartMember>
+                                  </ChartMembers>
+                                  <Label>=Fields!Free1.Value</Label>
                                 </ChartMember>
                               </ChartMembers>
                             </ChartCategoryHierarchy>
@@ -3019,11 +3126,11 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
                             </ChartSeriesHierarchy>
                             <ChartData>
                               <ChartSeriesCollection>
-                                <ChartSeries Name="Full2">
+                                <ChartSeries Name="Full1">
                                   <ChartDataPoints>
                                     <ChartDataPoint>
                                       <ChartDataPointValues>
-                                        <Y>=Sum(Fields!Full1.Value)</Y>
+                                        <Y>=Fields!Full1.Value</Y>
                                       </ChartDataPointValues>
                                       <ChartDataLabel>
                                         <Style />
@@ -3054,16 +3161,14 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
                                     <MinMovingDistance>0pt</MinMovingDistance>
                                   </ChartSmartLabel>
                                 </ChartSeries>
-                                <ChartSeries Name="Free2">
+                                <ChartSeries Name="Free1">
                                   <ChartDataPoints>
                                     <ChartDataPoint>
                                       <ChartDataPointValues>
-                                        <Y>=Sum(Fields!Free1.Value)</Y>
+                                        <Y>=Fields!Free1.Value</Y>
                                       </ChartDataPointValues>
                                       <ChartDataLabel>
                                         <Style />
-                                        <UseValueAsLabel>true</UseValueAsLabel>
-                                        <Visible>true</Visible>
                                       </ChartDataLabel>
                                       <Style />
                                       <ChartMarker>
@@ -3361,7 +3466,7 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
                                 <DockOutsideChartArea>true</DockOutsideChartArea>
                               </ChartTitle>
                               <ChartTitle Name="Title1">
-                                <Caption>=IIF(IsNothing(Fields!Note2.Value), "", Fields!Note2.Value)</Caption>
+                                <Caption>=IIF(IsNothing(Fields!Note1.Value), "", Fields!Note1.Value)</Caption>
                                 <Style>
                                   <BackgroundGradientType>None</BackgroundGradientType>
                                   <FontFamily>Segoe UI</FontFamily>
@@ -3424,15 +3529,15 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
                                     <ChartMember>
                                       <Group Name="Chart1_CategoryGroup">
                                         <GroupExpressions>
-                                          <GroupExpression>=Fields!TotalStr1.Value</GroupExpression>
+                                          <GroupExpression>=Fields!TotalStr2.Value</GroupExpression>
                                         </GroupExpressions>
                                       </Group>
                                       <SortExpressions>
                                         <SortExpression>
-                                          <Value>=Fields!TotalStr1.Value</Value>
+                                          <Value>=Fields!TotalStr2.Value</Value>
                                         </SortExpression>
                                       </SortExpressions>
-                                      <Label>=Fields!TotalStr1.Value</Label>
+                                      <Label>=Fields!TotalStr2.Value</Label>
                                     </ChartMember>
                                   </ChartMembers>
                                 </ChartCategoryHierarchy>
@@ -3851,17 +3956,17 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
                                     <ChartCategoryHierarchy>
                                       <ChartMembers>
                                         <ChartMember>
-                                          <Group Name="Chart1_CategoryGroup3">
+                                          <Group Name="Chart3_CategoryGroup">
                                             <GroupExpressions>
-                                              <GroupExpression>=Fields!TotalStr1.Value</GroupExpression>
+                                              <GroupExpression>=Fields!TotalStr3.Value</GroupExpression>
                                             </GroupExpressions>
                                           </Group>
                                           <SortExpressions>
                                             <SortExpression>
-                                              <Value>=Fields!TotalStr1.Value</Value>
+                                              <Value>=Fields!TotalStr3.Value</Value>
                                             </SortExpression>
                                           </SortExpressions>
-                                          <Label>=Fields!TotalStr1.Value</Label>
+                                          <Label>=Fields!TotalStr3.Value</Label>
                                         </ChartMember>
                                       </ChartMembers>
                                     </ChartCategoryHierarchy>
@@ -4219,7 +4324,7 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
                                         <DockOutsideChartArea>true</DockOutsideChartArea>
                                       </ChartTitle>
                                       <ChartTitle Name="Title1">
-                                        <Caption>=IIF(IsNothing(Fields!Note2.Value), "", Fields!Note2.Value)</Caption>
+                                        <Caption>=IIF(IsNothing(Fields!Note3.Value), "", Fields!Note3.Value)</Caption>
                                         <Style>
                                           <BackgroundGradientType>None</BackgroundGradientType>
                                           <FontFamily>Segoe UI</FontFamily>
@@ -4294,7 +4399,7 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
             <KeepTogether>true</KeepTogether>
             <Top>6.48506in</Top>
             <Left>0.08157in</Left>
-            <Height>2.85333in</Height>
+            <Height>2.37416in</Height>
             <Width>7.37464in</Width>
             <ZIndex>10</ZIndex>
             <Style>
@@ -4618,7 +4723,7 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
               </Tablix>
             </ReportItems>
             <KeepTogether>true</KeepTogether>
-            <Top>11.12673in</Top>
+            <Top>10.00173in</Top>
             <Left>0.08157in</Left>
             <Height>0.88056in</Height>
             <Width>7.37464in</Width>
@@ -5013,7 +5118,7 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
               </Tablix>
             </ReportItems>
             <KeepTogether>true</KeepTogether>
-            <Top>12.1434in</Top>
+            <Top>11.0184in</Top>
             <Left>0.09524in</Left>
             <Height>0.75in</Height>
             <Width>7.36097in</Width>
@@ -5523,6 +5628,8 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
                 <rd:DefaultName>Textbox36</rd:DefaultName>
                 <Height>0.36667in</Height>
                 <Width>4.14461in</Width>
+                <DocumentMapLabel>System Server Configuration</DocumentMapLabel>
+                <Bookmark>System Server Configuration</Bookmark>
                 <Style>
                   <Border>
                     <Style>None</Style>
@@ -6153,6 +6260,8 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
                 <Height>0.36667in</Height>
                 <Width>3.42917in</Width>
                 <ZIndex>1</ZIndex>
+                <DocumentMapLabel>Job Configurations</DocumentMapLabel>
+                <Bookmark>Job Configurations</Bookmark>
                 <Style>
                   <Border>
                     <Style>None</Style>
@@ -6497,7 +6606,7 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
                   </TablixMembers>
                 </TablixRowHierarchy>
                 <DataSetName>DatabaseSettings</DataSetName>
-                <Top>0.40834in</Top>
+                <Top>3.90834in</Top>
                 <Left>0.05417in</Left>
                 <Height>0.5in</Height>
                 <Width>7.37464in</Width>
@@ -6548,6 +6657,8 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
                 <Height>0.36667in</Height>
                 <Width>3.81863in</Width>
                 <ZIndex>1</ZIndex>
+                <DocumentMapLabel>Database Configuration</DocumentMapLabel>
+                <Bookmark>Database Configuration</Bookmark>
                 <Style>
                   <Border>
                     <Style>None</Style>
@@ -6558,11 +6669,463 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
                   <PaddingBottom>2pt</PaddingBottom>
                 </Style>
               </Textbox>
+              <Chart Name="DatabaseSizeChart">
+                <ChartCategoryHierarchy>
+                  <ChartMembers>
+                    <ChartMember>
+                      <Group Name="Chart4_CategoryGroup">
+                        <GroupExpressions>
+                          <GroupExpression>=Fields!Database_Name.Value</GroupExpression>
+                        </GroupExpressions>
+                      </Group>
+                      <SortExpressions>
+                        <SortExpression>
+                          <Value>=Fields!Total.Value</Value>
+                        </SortExpression>
+                      </SortExpressions>
+                      <Label>=Fields!Database_Name.Value</Label>
+                    </ChartMember>
+                  </ChartMembers>
+                </ChartCategoryHierarchy>
+                <ChartSeriesHierarchy>
+                  <ChartMembers>
+                    <ChartMember>
+                      <Label>Data Size</Label>
+                    </ChartMember>
+                    <ChartMember>
+                      <Label>Log Size</Label>
+                    </ChartMember>
+                    <ChartMember>
+                      <Label>Total</Label>
+                    </ChartMember>
+                  </ChartMembers>
+                </ChartSeriesHierarchy>
+                <ChartData>
+                  <ChartSeriesCollection>
+                    <ChartSeries Name="DataSize">
+                      <ChartDataPoints>
+                        <ChartDataPoint>
+                          <ChartDataPointValues>
+                            <Y>=Sum(Fields!DataSize.Value)</Y>
+                          </ChartDataPointValues>
+                          <ChartDataLabel>
+                            <Style>
+                              <Color>LightGrey</Color>
+                            </Style>
+                            <Label>#VALY</Label>
+                            <Visible>true</Visible>
+                          </ChartDataLabel>
+                          <Style>
+                            <Color>DarkBlue</Color>
+                          </Style>
+                          <ChartMarker>
+                            <Style />
+                          </ChartMarker>
+                          <DataElementOutput>Output</DataElementOutput>
+                        </ChartDataPoint>
+                      </ChartDataPoints>
+                      <Type>Bar</Type>
+                      <Subtype>Stacked</Subtype>
+                      <Style />
+                      <ChartEmptyPoints>
+                        <Style />
+                        <ChartMarker>
+                          <Style />
+                        </ChartMarker>
+                        <ChartDataLabel>
+                          <Style />
+                        </ChartDataLabel>
+                      </ChartEmptyPoints>
+                      <ValueAxisName>Primary</ValueAxisName>
+                      <CategoryAxisName>Primary</CategoryAxisName>
+                      <ChartSmartLabel>
+                        <CalloutLineColor>Black</CalloutLineColor>
+                        <MinMovingDistance>0pt</MinMovingDistance>
+                      </ChartSmartLabel>
+                    </ChartSeries>
+                    <ChartSeries Name="LogSize">
+                      <ChartDataPoints>
+                        <ChartDataPoint>
+                          <ChartDataPointValues>
+                            <Y>=Sum(Fields!LogSize.Value)</Y>
+                          </ChartDataPointValues>
+                          <ChartDataLabel>
+                            <Style>
+                              <Color>=iif(Fields!LogSize.Value &gt; Fields!DataSize.Value, "Red","Black")</Color>
+                            </Style>
+                            <Label>#VALY</Label>
+                            <Visible>=IIf(Fields!LogSize.Value = 0, false, true)</Visible>
+                          </ChartDataLabel>
+                          <Style>
+                            <Color>LightGrey</Color>
+                          </Style>
+                          <ChartMarker>
+                            <Style />
+                          </ChartMarker>
+                          <DataElementOutput>Output</DataElementOutput>
+                        </ChartDataPoint>
+                      </ChartDataPoints>
+                      <Type>Bar</Type>
+                      <Subtype>Stacked</Subtype>
+                      <Style />
+                      <ChartEmptyPoints>
+                        <Style />
+                        <ChartMarker>
+                          <Style />
+                        </ChartMarker>
+                        <ChartDataLabel>
+                          <Style />
+                        </ChartDataLabel>
+                      </ChartEmptyPoints>
+                      <ValueAxisName>Primary</ValueAxisName>
+                      <CategoryAxisName>Primary</CategoryAxisName>
+                      <ChartSmartLabel>
+                        <CalloutLineColor>Black</CalloutLineColor>
+                        <MinMovingDistance>0pt</MinMovingDistance>
+                      </ChartSmartLabel>
+                    </ChartSeries>
+                    <ChartSeries Name="Total">
+                      <ChartDataPoints>
+                        <ChartDataPoint>
+                          <ChartDataPointValues>
+                            <Y>=Sum(Fields!Total.Value)</Y>
+                          </ChartDataPointValues>
+                          <ChartDataLabel>
+                            <Style>
+                              <FontSize>12pt</FontSize>
+                              <FontWeight>Bold</FontWeight>
+                            </Style>
+                            <UseValueAsLabel>true</UseValueAsLabel>
+                            <Visible>true</Visible>
+                          </ChartDataLabel>
+                          <Style>
+                            <Color>#00ffffff</Color>
+                            <BackgroundGradientType>None</BackgroundGradientType>
+                            <BackgroundHatchType>None</BackgroundHatchType>
+                          </Style>
+                          <ChartMarker>
+                            <Style />
+                          </ChartMarker>
+                          <DataElementOutput>Output</DataElementOutput>
+                        </ChartDataPoint>
+                      </ChartDataPoints>
+                      <Type>Bar</Type>
+                      <Subtype>Stacked</Subtype>
+                      <Style />
+                      <ChartEmptyPoints>
+                        <Style />
+                        <ChartMarker>
+                          <Style />
+                        </ChartMarker>
+                        <ChartDataLabel>
+                          <Style />
+                        </ChartDataLabel>
+                      </ChartEmptyPoints>
+                      <ChartItemInLegend>
+                        <Hidden>true</Hidden>
+                      </ChartItemInLegend>
+                      <ValueAxisName>Primary</ValueAxisName>
+                      <CategoryAxisName>Primary</CategoryAxisName>
+                      <ChartSmartLabel>
+                        <CalloutLineColor>Black</CalloutLineColor>
+                        <MinMovingDistance>0pt</MinMovingDistance>
+                      </ChartSmartLabel>
+                    </ChartSeries>
+                  </ChartSeriesCollection>
+                </ChartData>
+                <ChartAreas>
+                  <ChartArea Name="Default">
+                    <ChartCategoryAxes>
+                      <ChartAxis Name="Primary">
+                        <Style>
+                          <Border>
+                            <Color>Gainsboro</Color>
+                            <Style>None</Style>
+                          </Border>
+                          <FontSize>8pt</FontSize>
+                          <Color>#5c5c5c</Color>
+                        </Style>
+                        <ChartAxisTitle>
+                          <Caption />
+                          <Style>
+                            <FontSize>9pt</FontSize>
+                            <Color>#5c5c5c</Color>
+                          </Style>
+                        </ChartAxisTitle>
+                        <ChartMajorGridLines>
+                          <Enabled>False</Enabled>
+                          <Style>
+                            <Border>
+                              <Color>Gainsboro</Color>
+                            </Border>
+                          </Style>
+                        </ChartMajorGridLines>
+                        <ChartMinorGridLines>
+                          <Style>
+                            <Border>
+                              <Color>Gainsboro</Color>
+                              <Style>Dotted</Style>
+                            </Border>
+                          </Style>
+                        </ChartMinorGridLines>
+                        <ChartMajorTickMarks>
+                          <Style>
+                            <Border>
+                              <Color>Gainsboro</Color>
+                              <Style>None</Style>
+                            </Border>
+                          </Style>
+                        </ChartMajorTickMarks>
+                        <ChartMinorTickMarks>
+                          <Style>
+                            <Border>
+                              <Color>Gainsboro</Color>
+                            </Border>
+                          </Style>
+                          <Length>0.5</Length>
+                        </ChartMinorTickMarks>
+                        <CrossAt>NaN</CrossAt>
+                        <Minimum>NaN</Minimum>
+                        <Maximum>NaN</Maximum>
+                        <ChartAxisScaleBreak>
+                          <Style />
+                        </ChartAxisScaleBreak>
+                      </ChartAxis>
+                      <ChartAxis Name="Secondary">
+                        <Style>
+                          <Border>
+                            <Color>Gainsboro</Color>
+                            <Style>None</Style>
+                          </Border>
+                          <FontSize>8pt</FontSize>
+                          <Color>#5c5c5c</Color>
+                        </Style>
+                        <ChartAxisTitle>
+                          <Caption />
+                          <Style>
+                            <FontSize>9pt</FontSize>
+                            <Color>#5c5c5c</Color>
+                          </Style>
+                        </ChartAxisTitle>
+                        <ChartMajorGridLines>
+                          <Enabled>False</Enabled>
+                          <Style>
+                            <Border>
+                              <Color>Gainsboro</Color>
+                            </Border>
+                          </Style>
+                        </ChartMajorGridLines>
+                        <ChartMinorGridLines>
+                          <Style>
+                            <Border>
+                              <Color>Gainsboro</Color>
+                              <Style>Dotted</Style>
+                            </Border>
+                          </Style>
+                        </ChartMinorGridLines>
+                        <ChartMajorTickMarks>
+                          <Style>
+                            <Border>
+                              <Color>Gainsboro</Color>
+                              <Style>None</Style>
+                            </Border>
+                          </Style>
+                        </ChartMajorTickMarks>
+                        <ChartMinorTickMarks>
+                          <Style>
+                            <Border>
+                              <Color>Gainsboro</Color>
+                            </Border>
+                          </Style>
+                          <Length>0.5</Length>
+                        </ChartMinorTickMarks>
+                        <CrossAt>NaN</CrossAt>
+                        <Location>Opposite</Location>
+                        <Minimum>NaN</Minimum>
+                        <Maximum>NaN</Maximum>
+                        <ChartAxisScaleBreak>
+                          <Style />
+                        </ChartAxisScaleBreak>
+                      </ChartAxis>
+                    </ChartCategoryAxes>
+                    <ChartValueAxes>
+                      <ChartAxis Name="Primary">
+                        <Style>
+                          <Border>
+                            <Color>Gainsboro</Color>
+                            <Style>None</Style>
+                          </Border>
+                          <FontSize>8pt</FontSize>
+                          <Format>0;(0) &amp;"GB"</Format>
+                          <Color>#5c5c5c</Color>
+                        </Style>
+                        <ChartAxisTitle>
+                          <Caption />
+                          <Style>
+                            <FontSize>9pt</FontSize>
+                            <Color>#5c5c5c</Color>
+                          </Style>
+                        </ChartAxisTitle>
+                        <ChartMajorGridLines>
+                          <Style>
+                            <Border>
+                              <Color>Gainsboro</Color>
+                            </Border>
+                          </Style>
+                        </ChartMajorGridLines>
+                        <ChartMinorGridLines>
+                          <Style>
+                            <Border>
+                              <Color>Gainsboro</Color>
+                              <Style>Dotted</Style>
+                            </Border>
+                          </Style>
+                        </ChartMinorGridLines>
+                        <ChartMajorTickMarks>
+                          <Style>
+                            <Border>
+                              <Color>Gainsboro</Color>
+                              <Style>None</Style>
+                            </Border>
+                          </Style>
+                        </ChartMajorTickMarks>
+                        <ChartMinorTickMarks>
+                          <Style>
+                            <Border>
+                              <Color>Gainsboro</Color>
+                            </Border>
+                          </Style>
+                          <Length>0.5</Length>
+                        </ChartMinorTickMarks>
+                        <CrossAt>NaN</CrossAt>
+                        <Minimum>NaN</Minimum>
+                        <Maximum>NaN</Maximum>
+                        <ChartAxisScaleBreak>
+                          <Style />
+                        </ChartAxisScaleBreak>
+                      </ChartAxis>
+                      <ChartAxis Name="Secondary">
+                        <Style>
+                          <Border>
+                            <Color>Gainsboro</Color>
+                            <Style>None</Style>
+                          </Border>
+                          <FontSize>8pt</FontSize>
+                          <Color>#5c5c5c</Color>
+                        </Style>
+                        <ChartAxisTitle>
+                          <Caption />
+                          <Style>
+                            <FontSize>9pt</FontSize>
+                            <Color>#5c5c5c</Color>
+                          </Style>
+                        </ChartAxisTitle>
+                        <ChartMajorGridLines>
+                          <Style>
+                            <Border>
+                              <Color>Gainsboro</Color>
+                            </Border>
+                          </Style>
+                        </ChartMajorGridLines>
+                        <ChartMinorGridLines>
+                          <Style>
+                            <Border>
+                              <Color>Gainsboro</Color>
+                              <Style>Dotted</Style>
+                            </Border>
+                          </Style>
+                        </ChartMinorGridLines>
+                        <ChartMajorTickMarks>
+                          <Style>
+                            <Border>
+                              <Color>Gainsboro</Color>
+                              <Style>None</Style>
+                            </Border>
+                          </Style>
+                        </ChartMajorTickMarks>
+                        <ChartMinorTickMarks>
+                          <Style>
+                            <Border>
+                              <Color>Gainsboro</Color>
+                            </Border>
+                          </Style>
+                          <Length>0.5</Length>
+                        </ChartMinorTickMarks>
+                        <CrossAt>NaN</CrossAt>
+                        <Location>Opposite</Location>
+                        <Minimum>NaN</Minimum>
+                        <Maximum>NaN</Maximum>
+                        <ChartAxisScaleBreak>
+                          <Style />
+                        </ChartAxisScaleBreak>
+                      </ChartAxis>
+                    </ChartValueAxes>
+                    <ChartThreeDProperties>
+                      <Enabled>true</Enabled>
+                    </ChartThreeDProperties>
+                    <Style>
+                      <BackgroundColor>#00ffffff</BackgroundColor>
+                      <BackgroundGradientType>None</BackgroundGradientType>
+                    </Style>
+                  </ChartArea>
+                </ChartAreas>
+                <ChartLegends>
+                  <ChartLegend Name="Default">
+                    <Style>
+                      <BackgroundGradientType>None</BackgroundGradientType>
+                      <FontSize>8pt</FontSize>
+                    </Style>
+                    <Position>TopLeft</Position>
+                    <ChartLegendTitle>
+                      <Caption />
+                      <Style>
+                        <FontSize>8pt</FontSize>
+                        <FontWeight>Bold</FontWeight>
+                        <TextAlign>Center</TextAlign>
+                      </Style>
+                    </ChartLegendTitle>
+                    <HeaderSeparatorColor>Black</HeaderSeparatorColor>
+                    <ColumnSeparatorColor>Black</ColumnSeparatorColor>
+                  </ChartLegend>
+                </ChartLegends>
+                <Palette>Pacific</Palette>
+                <ChartBorderSkin>
+                  <Style>
+                    <BackgroundColor>Gray</BackgroundColor>
+                    <BackgroundGradientType>None</BackgroundGradientType>
+                    <Color>White</Color>
+                  </Style>
+                </ChartBorderSkin>
+                <ChartNoDataMessage Name="NoDataMessage">
+                  <Caption>No Data Available</Caption>
+                  <Style>
+                    <BackgroundGradientType>None</BackgroundGradientType>
+                    <FontWeight>Bold</FontWeight>
+                    <TextAlign>General</TextAlign>
+                    <VerticalAlign>Top</VerticalAlign>
+                  </Style>
+                </ChartNoDataMessage>
+                <DataSetName>GetDatabaseSizeChart</DataSetName>
+                <Top>0.43611in</Top>
+                <Left>0.08542in</Left>
+                <Height>3.28506in</Height>
+                <Width>7.25797in</Width>
+                <ZIndex>2</ZIndex>
+                <ToolTip>DatabaseSizeChart</ToolTip>
+                <Style>
+                  <Border>
+                    <Color>LightGrey</Color>
+                    <Style>None</Style>
+                  </Border>
+                  <BackgroundColor>White</BackgroundColor>
+                  <BackgroundGradientType>None</BackgroundGradientType>
+                </Style>
+              </Chart>
             </ReportItems>
             <KeepTogether>true</KeepTogether>
-            <Top>18.10173in</Top>
+            <Top>18.22673in</Top>
             <Left>0.0274in</Left>
-            <Height>0.91867in</Height>
+            <Height>4.40834in</Height>
             <Width>7.42881in</Width>
             <ZIndex>16</ZIndex>
             <Style>
@@ -6870,8 +7433,8 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
               </Textbox>
             </ReportItems>
             <KeepTogether>true</KeepTogether>
-            <Top>20.15173in</Top>
-            <Left>0.08157in</Left>
+            <Top>25.54522in</Top>
+            <Left>0.09147in</Left>
             <Height>0.75278in</Height>
             <Width>7.37464in</Width>
             <ZIndex>17</ZIndex>
@@ -6910,7 +7473,7 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
               </Rectangle>
             </ReportItems>
             <KeepTogether>true</KeepTogether>
-            <Top>10.13686in</Top>
+            <Top>9.01186in</Top>
             <Left>0.07486in</Left>
             <Height>0.92043in</Height>
             <Width>7.38135in</Width>
@@ -6958,7 +7521,7 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
               </Paragraph>
             </Paragraphs>
             <rd:DefaultName>Textbox36</rd:DefaultName>
-            <Top>10.13686in</Top>
+            <Top>9.01186in</Top>
             <Left>0.07486in</Left>
             <Height>0.36111in</Height>
             <Width>3.23334in</Width>
@@ -7386,7 +7949,7 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
                 </FilterValues>
               </Filter>
             </Filters>
-            <Top>10.55729in</Top>
+            <Top>9.43229in</Top>
             <Left>0.08157in</Left>
             <Height>0.5in</Height>
             <Width>7.06599in</Width>
@@ -8068,8 +8631,8 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
               </Tablix>
             </ReportItems>
             <KeepTogether>true</KeepTogether>
-            <Top>21.03923in</Top>
-            <Left>0.07486in</Left>
+            <Top>26.30772in</Top>
+            <Left>0.08476in</Left>
             <Height>0.78697in</Height>
             <Width>7.38135in</Width>
             <ZIndex>24</ZIndex>
@@ -8082,7 +8645,7 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
               </Border>
             </Style>
           </Rectangle>
-          <Rectangle Name="Rectangle21">
+          <Rectangle Name="RecBlitz">
             <ReportItems>
               <Textbox Name="Textbox72">
                 <CanGrow>true</CanGrow>
@@ -8254,9 +8817,9 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
               </Tablix>
             </ReportItems>
             <KeepTogether>true</KeepTogether>
-            <Top>22.85173in</Top>
-            <Left>0.08157in</Left>
-            <Height>1.47917in</Height>
+            <Top>27.2059in</Top>
+            <Left>0.09147in</Left>
+            <Height>1.21875in</Height>
             <Width>7.37464in</Width>
             <ZIndex>25</ZIndex>
             <Visibility>
@@ -8268,8 +8831,684 @@ Our consulting services include: Big Data &amp; NoSQL, Databases in the Cloud, D
               </Border>
             </Style>
           </Rectangle>
+          <Rectangle Name="RecSec">
+            <ReportItems>
+              <Textbox Name="Textbox62">
+                <CanGrow>true</CanGrow>
+                <KeepTogether>true</KeepTogether>
+                <Paragraphs>
+                  <Paragraph>
+                    <TextRuns>
+                      <TextRun>
+                        <Value>Security </Value>
+                        <Style>
+                          <FontFamily>Segoe UI</FontFamily>
+                          <FontSize>18pt</FontSize>
+                          <FontWeight>Bold</FontWeight>
+                          <Color>DarkBlue</Color>
+                        </Style>
+                      </TextRun>
+                      <TextRun>
+                        <Value>logins with sysadmin privileges</Value>
+                        <Style>
+                          <FontFamily>Segoe UI</FontFamily>
+                          <FontSize>9pt</FontSize>
+                          <FontWeight>Bold</FontWeight>
+                          <Color>DarkBlue</Color>
+                        </Style>
+                      </TextRun>
+                      <TextRun>
+                        <Label>Top</Label>
+                        <Value>="&lt;Top&gt;"</Value>
+                        <ActionInfo>
+                          <Actions>
+                            <Action>
+                              <BookmarkLink>Table Of Contents</BookmarkLink>
+                            </Action>
+                          </Actions>
+                        </ActionInfo>
+                        <Style>
+                          <FontFamily>Segoe UI</FontFamily>
+                          <FontSize>9pt</FontSize>
+                          <TextDecoration>Underline</TextDecoration>
+                          <Color>DarkBlue</Color>
+                        </Style>
+                      </TextRun>
+                    </TextRuns>
+                    <Style />
+                  </Paragraph>
+                </Paragraphs>
+                <rd:DefaultName>Textbox36</rd:DefaultName>
+                <Height>0.36667in</Height>
+                <Width>3.81863in</Width>
+                <DocumentMapLabel>Security</DocumentMapLabel>
+                <Bookmark>Security</Bookmark>
+                <Style>
+                  <Border>
+                    <Style>None</Style>
+                  </Border>
+                  <PaddingLeft>2pt</PaddingLeft>
+                  <PaddingRight>2pt</PaddingRight>
+                  <PaddingTop>2pt</PaddingTop>
+                  <PaddingBottom>2pt</PaddingBottom>
+                </Style>
+              </Textbox>
+              <Tablix Name="TblSysAdmin">
+                <TablixBody>
+                  <TablixColumns>
+                    <TablixColumn>
+                      <Width>2.67911in</Width>
+                    </TablixColumn>
+                    <TablixColumn>
+                      <Width>4.54588in</Width>
+                    </TablixColumn>
+                  </TablixColumns>
+                  <TablixRows>
+                    <TablixRow>
+                      <Height>0.25in</Height>
+                      <TablixCells>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="Name1">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!Name.Value</Value>
+                                      <Style>
+                                        <FontFamily>Segoe UI</FontFamily>
+                                        <FontSize>9pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style />
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Name1</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>LightGrey</Color>
+                                  <Style>None</Style>
+                                </Border>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="Textbox78">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!Groups.Value</Value>
+                                      <MarkupType>HTML</MarkupType>
+                                      <Style>
+                                        <FontFamily>Segoe UI</FontFamily>
+                                        <FontSize>9pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style />
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Textbox73</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>LightGrey</Color>
+                                  <Style>None</Style>
+                                </Border>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                      </TablixCells>
+                    </TablixRow>
+                  </TablixRows>
+                </TablixBody>
+                <TablixColumnHierarchy>
+                  <TablixMembers>
+                    <TablixMember>
+                      <TablixHeader>
+                        <Size>0.25in</Size>
+                        <CellContents>
+                          <Textbox Name="Textbox112">
+                            <CanGrow>true</CanGrow>
+                            <KeepTogether>true</KeepTogether>
+                            <Paragraphs>
+                              <Paragraph>
+                                <TextRuns>
+                                  <TextRun>
+                                    <Value>Name</Value>
+                                    <Style>
+                                      <FontFamily>Segoe UI</FontFamily>
+                                      <FontWeight>Bold</FontWeight>
+                                      <Color>DarkBlue</Color>
+                                    </Style>
+                                  </TextRun>
+                                </TextRuns>
+                                <Style />
+                              </Paragraph>
+                            </Paragraphs>
+                            <rd:DefaultName>Textbox112</rd:DefaultName>
+                            <Style>
+                              <Border>
+                                <Color>LightGrey</Color>
+                                <Style>None</Style>
+                              </Border>
+                              <PaddingLeft>2pt</PaddingLeft>
+                              <PaddingRight>2pt</PaddingRight>
+                              <PaddingTop>2pt</PaddingTop>
+                              <PaddingBottom>2pt</PaddingBottom>
+                            </Style>
+                          </Textbox>
+                        </CellContents>
+                      </TablixHeader>
+                      <TablixMembers>
+                        <TablixMember />
+                      </TablixMembers>
+                    </TablixMember>
+                    <TablixMember>
+                      <TablixHeader>
+                        <Size>0.25in</Size>
+                        <CellContents>
+                          <Textbox Name="Textbox116">
+                            <CanGrow>true</CanGrow>
+                            <KeepTogether>true</KeepTogether>
+                            <Paragraphs>
+                              <Paragraph>
+                                <TextRuns>
+                                  <TextRun>
+                                    <Value>Groups</Value>
+                                    <Style>
+                                      <FontFamily>Segoe UI</FontFamily>
+                                      <FontWeight>Bold</FontWeight>
+                                      <Color>DarkBlue</Color>
+                                    </Style>
+                                  </TextRun>
+                                </TextRuns>
+                                <Style />
+                              </Paragraph>
+                            </Paragraphs>
+                            <rd:DefaultName>Textbox116</rd:DefaultName>
+                            <Style>
+                              <Border>
+                                <Color>LightGrey</Color>
+                                <Style>None</Style>
+                              </Border>
+                              <PaddingLeft>2pt</PaddingLeft>
+                              <PaddingRight>2pt</PaddingRight>
+                              <PaddingTop>2pt</PaddingTop>
+                              <PaddingBottom>2pt</PaddingBottom>
+                            </Style>
+                          </Textbox>
+                        </CellContents>
+                      </TablixHeader>
+                      <TablixMembers>
+                        <TablixMember />
+                      </TablixMembers>
+                    </TablixMember>
+                  </TablixMembers>
+                </TablixColumnHierarchy>
+                <TablixRowHierarchy>
+                  <TablixMembers>
+                    <TablixMember>
+                      <Group Name="Details19" />
+                    </TablixMember>
+                  </TablixMembers>
+                </TablixRowHierarchy>
+                <DataSetName>GetSysadmin</DataSetName>
+                <Top>0.40834in</Top>
+                <Left>0.01679in</Left>
+                <Height>0.5in</Height>
+                <Width>7.22499in</Width>
+                <ZIndex>1</ZIndex>
+                <ToolTip>System Admins</ToolTip>
+                <Style>
+                  <Border>
+                    <Style>None</Style>
+                  </Border>
+                </Style>
+              </Tablix>
+            </ReportItems>
+            <KeepTogether>true</KeepTogether>
+            <Top>23.20451in</Top>
+            <Left>0.0274in</Left>
+            <Height>0.91867in</Height>
+            <Width>7.42881in</Width>
+            <ZIndex>26</ZIndex>
+            <Visibility>
+              <Hidden>=CountRows("GetSysadmin") &lt; 1</Hidden>
+            </Visibility>
+            <Style>
+              <Border>
+                <Style>None</Style>
+              </Border>
+            </Style>
+          </Rectangle>
+          <Rectangle Name="RecHeavyQueries">
+            <ReportItems>
+              <Textbox Name="Textbox77">
+                <CanGrow>true</CanGrow>
+                <KeepTogether>true</KeepTogether>
+                <Paragraphs>
+                  <Paragraph>
+                    <TextRuns>
+                      <TextRun>
+                        <Value>Heavy Queries </Value>
+                        <Style>
+                          <FontFamily>Segoe UI</FontFamily>
+                          <FontSize>18pt</FontSize>
+                          <FontWeight>Bold</FontWeight>
+                          <Color>DarkBlue</Color>
+                        </Style>
+                      </TextRun>
+                      <TextRun>
+                        <Label>Top</Label>
+                        <Value>="&lt;Top&gt;"</Value>
+                        <ActionInfo>
+                          <Actions>
+                            <Action>
+                              <BookmarkLink>Table Of Contents</BookmarkLink>
+                            </Action>
+                          </Actions>
+                        </ActionInfo>
+                        <Style>
+                          <FontFamily>Segoe UI</FontFamily>
+                          <FontSize>9pt</FontSize>
+                          <TextDecoration>Underline</TextDecoration>
+                          <Color>DarkBlue</Color>
+                        </Style>
+                      </TextRun>
+                    </TextRuns>
+                    <Style />
+                  </Paragraph>
+                </Paragraphs>
+                <rd:DefaultName>Textbox36</rd:DefaultName>
+                <Height>0.36667in</Height>
+                <Width>3.81863in</Width>
+                <DocumentMapLabel>Heavy Queries</DocumentMapLabel>
+                <Bookmark>Heavy Queries</Bookmark>
+                <Style>
+                  <Border>
+                    <Style>None</Style>
+                  </Border>
+                  <PaddingLeft>2pt</PaddingLeft>
+                  <PaddingRight>2pt</PaddingRight>
+                  <PaddingTop>2pt</PaddingTop>
+                  <PaddingBottom>2pt</PaddingBottom>
+                </Style>
+              </Textbox>
+              <Tablix Name="TblQuery">
+                <TablixBody>
+                  <TablixColumns>
+                    <TablixColumn>
+                      <Width>1.57132in</Width>
+                    </TablixColumn>
+                    <TablixColumn>
+                      <Width>3.3149in</Width>
+                    </TablixColumn>
+                    <TablixColumn>
+                      <Width>1in</Width>
+                    </TablixColumn>
+                    <TablixColumn>
+                      <Width>1.29762in</Width>
+                    </TablixColumn>
+                  </TablixColumns>
+                  <TablixRows>
+                    <TablixRow>
+                      <Height>0.25in</Height>
+                      <TablixCells>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="Type1">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!Type.Value</Value>
+                                      <Style>
+                                        <FontFamily>Segoe UI</FontFamily>
+                                        <FontSize>8pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style />
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Type1</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>LightGrey</Color>
+                                  <Style>None</Style>
+                                </Border>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="Query">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!Query.Value</Value>
+                                      <Style>
+                                        <FontFamily>Segoe UI</FontFamily>
+                                        <FontSize>9pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style />
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>Query</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>LightGrey</Color>
+                                  <Style>None</Style>
+                                </Border>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="AvgDuration">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!AvgDuration.Value</Value>
+                                      <Style>
+                                        <FontFamily>Segoe UI</FontFamily>
+                                        <FontSize>9pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style />
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>AvgDuration</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>LightGrey</Color>
+                                  <Style>None</Style>
+                                </Border>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                        <TablixCell>
+                          <CellContents>
+                            <Textbox Name="ExecutionCount">
+                              <CanGrow>true</CanGrow>
+                              <KeepTogether>true</KeepTogether>
+                              <Paragraphs>
+                                <Paragraph>
+                                  <TextRuns>
+                                    <TextRun>
+                                      <Value>=Fields!ExecutionCount.Value</Value>
+                                      <Style>
+                                        <FontFamily>Segoe UI</FontFamily>
+                                        <FontSize>9pt</FontSize>
+                                        <FontWeight>Bold</FontWeight>
+                                      </Style>
+                                    </TextRun>
+                                  </TextRuns>
+                                  <Style />
+                                </Paragraph>
+                              </Paragraphs>
+                              <rd:DefaultName>ExecutionCount</rd:DefaultName>
+                              <Style>
+                                <Border>
+                                  <Color>LightGrey</Color>
+                                  <Style>None</Style>
+                                </Border>
+                                <PaddingLeft>2pt</PaddingLeft>
+                                <PaddingRight>2pt</PaddingRight>
+                                <PaddingTop>2pt</PaddingTop>
+                                <PaddingBottom>2pt</PaddingBottom>
+                              </Style>
+                            </Textbox>
+                          </CellContents>
+                        </TablixCell>
+                      </TablixCells>
+                    </TablixRow>
+                  </TablixRows>
+                </TablixBody>
+                <TablixColumnHierarchy>
+                  <TablixMembers>
+                    <TablixMember>
+                      <TablixHeader>
+                        <Size>0.25in</Size>
+                        <CellContents>
+                          <Textbox Name="Textbox121">
+                            <CanGrow>true</CanGrow>
+                            <KeepTogether>true</KeepTogether>
+                            <Paragraphs>
+                              <Paragraph>
+                                <TextRuns>
+                                  <TextRun>
+                                    <Value>Type</Value>
+                                    <Style>
+                                      <FontFamily>Segoe UI</FontFamily>
+                                      <FontWeight>Bold</FontWeight>
+                                      <Color>DarkBlue</Color>
+                                    </Style>
+                                  </TextRun>
+                                </TextRuns>
+                                <Style />
+                              </Paragraph>
+                            </Paragraphs>
+                            <rd:DefaultName>Textbox121</rd:DefaultName>
+                            <Style>
+                              <Border>
+                                <Color>LightGrey</Color>
+                                <Style>None</Style>
+                              </Border>
+                              <PaddingLeft>2pt</PaddingLeft>
+                              <PaddingRight>2pt</PaddingRight>
+                              <PaddingTop>2pt</PaddingTop>
+                              <PaddingBottom>2pt</PaddingBottom>
+                            </Style>
+                          </Textbox>
+                        </CellContents>
+                      </TablixHeader>
+                      <TablixMembers>
+                        <TablixMember />
+                      </TablixMembers>
+                    </TablixMember>
+                    <TablixMember>
+                      <TablixHeader>
+                        <Size>0.25in</Size>
+                        <CellContents>
+                          <Textbox Name="Textbox122">
+                            <CanGrow>true</CanGrow>
+                            <KeepTogether>true</KeepTogether>
+                            <Paragraphs>
+                              <Paragraph>
+                                <TextRuns>
+                                  <TextRun>
+                                    <Value>Query</Value>
+                                    <Style>
+                                      <FontFamily>Segoe UI</FontFamily>
+                                      <FontWeight>Bold</FontWeight>
+                                      <Color>DarkBlue</Color>
+                                    </Style>
+                                  </TextRun>
+                                </TextRuns>
+                                <Style />
+                              </Paragraph>
+                            </Paragraphs>
+                            <rd:DefaultName>Textbox122</rd:DefaultName>
+                            <Style>
+                              <Border>
+                                <Color>LightGrey</Color>
+                                <Style>None</Style>
+                              </Border>
+                              <PaddingLeft>2pt</PaddingLeft>
+                              <PaddingRight>2pt</PaddingRight>
+                              <PaddingTop>2pt</PaddingTop>
+                              <PaddingBottom>2pt</PaddingBottom>
+                            </Style>
+                          </Textbox>
+                        </CellContents>
+                      </TablixHeader>
+                      <TablixMembers>
+                        <TablixMember />
+                      </TablixMembers>
+                    </TablixMember>
+                    <TablixMember>
+                      <TablixHeader>
+                        <Size>0.25in</Size>
+                        <CellContents>
+                          <Textbox Name="Textbox125">
+                            <CanGrow>true</CanGrow>
+                            <KeepTogether>true</KeepTogether>
+                            <Paragraphs>
+                              <Paragraph>
+                                <TextRuns>
+                                  <TextRun>
+                                    <Value>Avg Duration</Value>
+                                    <Style>
+                                      <FontFamily>Segoe UI</FontFamily>
+                                      <FontWeight>Bold</FontWeight>
+                                      <Color>DarkBlue</Color>
+                                    </Style>
+                                  </TextRun>
+                                </TextRuns>
+                                <Style />
+                              </Paragraph>
+                            </Paragraphs>
+                            <rd:DefaultName>Textbox125</rd:DefaultName>
+                            <Style>
+                              <Border>
+                                <Color>LightGrey</Color>
+                                <Style>None</Style>
+                              </Border>
+                              <PaddingLeft>2pt</PaddingLeft>
+                              <PaddingRight>2pt</PaddingRight>
+                              <PaddingTop>2pt</PaddingTop>
+                              <PaddingBottom>2pt</PaddingBottom>
+                            </Style>
+                          </Textbox>
+                        </CellContents>
+                      </TablixHeader>
+                    </TablixMember>
+                    <TablixMember>
+                      <TablixHeader>
+                        <Size>0.25in</Size>
+                        <CellContents>
+                          <Textbox Name="Textbox127">
+                            <CanGrow>true</CanGrow>
+                            <KeepTogether>true</KeepTogether>
+                            <Paragraphs>
+                              <Paragraph>
+                                <TextRuns>
+                                  <TextRun>
+                                    <Value>Execution Count</Value>
+                                    <Style>
+                                      <FontFamily>Segoe UI</FontFamily>
+                                      <FontWeight>Bold</FontWeight>
+                                      <Color>DarkBlue</Color>
+                                    </Style>
+                                  </TextRun>
+                                </TextRuns>
+                                <Style />
+                              </Paragraph>
+                            </Paragraphs>
+                            <rd:DefaultName>Textbox127</rd:DefaultName>
+                            <Style>
+                              <Border>
+                                <Color>LightGrey</Color>
+                                <Style>None</Style>
+                              </Border>
+                              <PaddingLeft>2pt</PaddingLeft>
+                              <PaddingRight>2pt</PaddingRight>
+                              <PaddingTop>2pt</PaddingTop>
+                              <PaddingBottom>2pt</PaddingBottom>
+                            </Style>
+                          </Textbox>
+                        </CellContents>
+                      </TablixHeader>
+                    </TablixMember>
+                  </TablixMembers>
+                </TablixColumnHierarchy>
+                <TablixRowHierarchy>
+                  <TablixMembers>
+                    <TablixMember>
+                      <Group Name="Details20" />
+                    </TablixMember>
+                  </TablixMembers>
+                </TablixRowHierarchy>
+                <DataSetName>GetHeavyQueries</DataSetName>
+                <Top>0.42223in</Top>
+                <Left>0.01875in</Left>
+                <Height>0.5in</Height>
+                <Width>7.18384in</Width>
+                <ZIndex>1</ZIndex>
+                <ToolTip>Heavy Query</ToolTip>
+                <Style>
+                  <Border>
+                    <Style>None</Style>
+                  </Border>
+                </Style>
+              </Tablix>
+            </ReportItems>
+            <KeepTogether>true</KeepTogether>
+            <Top>24.12674in</Top>
+            <Left>0.06659in</Left>
+            <Height>0.92223in</Height>
+            <Width>7.42881in</Width>
+            <ZIndex>27</ZIndex>
+            <Visibility>
+              <Hidden>=CountRows("GetHeavyQueries") &lt; 1</Hidden>
+            </Visibility>
+            <Style>
+              <Border>
+                <Style>None</Style>
+              </Border>
+            </Style>
+          </Rectangle>
         </ReportItems>
-        <Height>27.81488in</Height>
+        <Height>31.43351in</Height>
         <Style>
           <Border>
             <Style>None</Style>

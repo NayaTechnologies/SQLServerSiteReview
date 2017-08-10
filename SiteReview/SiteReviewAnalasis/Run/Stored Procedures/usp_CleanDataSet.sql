@@ -45,6 +45,12 @@ BEGIN
 	DELETE FROM [Client].[DatabaseFiles] WHERE guid = @guid;
 	DELETE FROM [Client].[DatabaseProperties] WHERE guid = @guid;
 	DELETE FROM [Client].[Replications] WHERE guid = @guid;
+	DELETE FROM [Client].[DebugError] WHERE guid = @guid;
+	
+	DELETE FROM [Client].[SysAdmin] WHERE guid = @guid;
+	DELETE FROM [Client].CPUHistory WHERE guid = @guid;
+	DELETE FROM [Client].HeavyQueries WHERE guid = @guid;
+	--DELETE FROM [Client].[RemoteServerNode] WHERE guid = @guid;
 	
 END
 

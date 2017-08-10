@@ -53,6 +53,7 @@ BEGIN
 			OR (D.IsCRMDynamics = 1 AND i.ID = 13)
 			OR (D.IsSharePoint = 1 AND i.ID = 15)
 			OR (D.IsSAP = 1 AND i.ID = 14)
+			OR (D.IsTFS = 1 AND i.ID = 22)
 			OR (D.name LIKE '%ReportServer%' AND i.ID = 18)
 			OR (D.name = 'SSIS' AND i.ID = 19)
 			OR (ED.TypeID = 2 AND i.ID = 20)
@@ -81,29 +82,29 @@ BEGIN
 			AND D.collation_name != @Collation
 			AND D.name NOT IN ('ReportServer','ReportServerTempdb')
 	UNION ALL 
-	SELECT	'auto_close',D.name,
-			i.img [Image],'Databases have is_auto_close proporty on. this is not recommanded',
+	SELECT	'Auto Close',D.name,
+			i.img [Image],'Databases have is_auto_close proporty on. this is not recommended',
 			D.database_id
 	FROM	Client.Databases D
 			INNER JOIN #Img i ON i.database_id = D.database_id
 	WHERE	D.guid = @guid
 			AND D.is_auto_close_on = 1
 	UNION ALL 
-	SELECT	'auto_shrink',D.name,
-			i.img [Image],'Databases have is_auto_shrink proporty on. this is not recommanded',
+	SELECT	'Auto Shrink',D.name,
+			i.img [Image],'Databases have is_auto_shrink proporty on. this is not recommended',
 			D.database_id
 	FROM	Client.Databases D
 			INNER JOIN #Img i ON i.database_id = D.database_id
 	WHERE	D.guid = @guid
 			AND D.is_auto_shrink_on = 1
 	UNION ALL
-	SELECT	'compatibility_level',D.name,
+	SELECT	'Compatibility Level',D.name,
 			i.img [Image],'Databases have compatibility_level(' + TRY_CONVERT(VARCHAR(5),D.compatibility_level) + ') lower then the server(' + CONVERT(VARCHAR(5),@compatibility_level) + '). this is not recommanded',
 			D.database_id
 	FROM	Client.Databases D
 			INNER JOIN #Img i ON i.database_id = D.database_id
 	WHERE	D.guid = @guid
-			AND D.compatibility_level != @compatibility_level
+			AND D.compatibility_level != IIF(@compatibility_level = 105,100,@compatibility_level)
 	UNION ALL 
 	SELECT	'Log File',DF.Database_Name,
 			i.img [Image],CONCAT('Log file size [(Log) ' , CONVERT(NVARCHAR(1000),L.Size) , 'MB / ' , CONVERT(NVARCHAR(1000),SUM(DF.Total_Size)) , 'MB (Data)] is ' , CONVERT(INT,ROUND((L.Size / (SUM(DF.Total_Size)*1.0) * 100),0)) , '% then Database size'),
@@ -141,7 +142,7 @@ BEGIN
 			AND DF.database_id > 4
 	GROUP BY DF.Database_Name,DF.database_id,im.img
 	UNION ALL 
-	SELECT	'Database File','tempdb',im.img [Image],CONCAT('Add more ',COUNT(1),' files to database.'	),2
+	SELECT	'Database File','tempdb',im.img [Image],CONCAT('Add ',COUNT(1) - 1,' more data files to database.'	),2
 	FROM	(SELECT	v.number n
 	    	 FROM	master..spt_values v
 			 WHERE	v.type = 'p'
@@ -170,7 +171,15 @@ BEGIN
 						ORDER BY COUNT(1) DESC,Sdf.Total_Size DESC)S
 	WHERE RDF.[File_Name] IS NULL
 	GROUP BY im.img
-	HAVING COUNT(1) > 0
+	HAVING (COUNT(1) -1) > 0
+	UNION ALL 
+	SELECT	B.FindingsGroup,B.DatabaseName,im.img [Image],CONCAT(B.Finding,'-',B.Details) [Message],im.database_id
+	FROM	Client.Blitz B
+			INNER JOIN #Img im ON im.name = B.DatabaseName
+	WHERE	B.guid = @Guid
+			AND B.Finding NOT IN ('High VLF Count')
+			AND B.FindingsGroup NOT IN ('Wait Stats','Rundate','Server Info','Informational','Licensing','Non-Default Server Config')
+			AND B.DatabaseName IS NOT NULL
 	UNION ALL 
 	SELECT	'Database File',DF.Database_Name,
 			im.img [Image],'TempDB files are located with other database files. Please choose diffrent drive for TempDB files.',

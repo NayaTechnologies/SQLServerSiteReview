@@ -17,7 +17,7 @@ BEGIN
 	ELSE IF @Edition LIKE '%Business Intelligence%' SET @Edition = 'Business Intelligence'
 	ELSE IF @Edition LIKE '%Standard%' SET @Edition = 'Standard'
 
-	SELECT @ResultString = 'Microsoft SQL Server ' + CASE WHEN b.Major = 10 THEN CASE WHEN PARSENAME(CONVERT(VARCHAR(32), @Ver), 3) = '50' THEN '2008 R2' ELSE '2008' END
+	SELECT TOP 1 @ResultString = 'Microsoft SQL Server ' + CASE WHEN b.Major = 10 THEN CASE WHEN PARSENAME(CONVERT(VARCHAR(32), @Ver), 3) = '50' THEN '2008 R2' ELSE '2008' END
 			ELSE CONVERT(VARCHAR(8),b.Year) END +' ' + @Edition
 	FROM	[Configuration].[SQLServerMajorBuild] b 
 	WHERE	PARSENAME(CONVERT(VARCHAR(32), @Ver), 4) = CONVERT(NCHAR(4),b.Major)

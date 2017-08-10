@@ -59,20 +59,21 @@ BEGIN
 			,@Build = REPLACE(CONCAT(S.Build,'.0'),'.00.','.0.')
 	FROM	@SP S
 	WHERE	S.ShortName = 'SP';
-	IF @Description LIKE '%Service Pack 1%' OR @Description LIKE '% SP1 %' SET @NewSP += N'1</B>'
-	ELSE IF @Description LIKE '%Service Pack 2%' OR @Description LIKE '% SP2 %' SET @NewSP += N'2</B>'
-	ELSE IF @Description LIKE '%Service Pack 3%' OR @Description LIKE '% SP3 %' SET @NewSP += N'3</B>'
-	ELSE IF @Description LIKE '%Service Pack 4%' OR @Description LIKE '% SP4 %' SET @NewSP += N'4</B>'
-	ELSE IF @Description LIKE '%Service Pack 5%' OR @Description LIKE '% SP5 %' SET @NewSP += N'5</B>'
-	ELSE IF @Description LIKE '%Service Pack 6%' OR @Description LIKE '% SP6 %' SET @NewSP += N'6</B>'
-	ELSE IF @Description LIKE '%Service Pack 7%' OR @Description LIKE '% SP7 %' SET @NewSP += N'7</B>'
-	ELSE IF @Description LIKE '%Service Pack 8%' OR @Description LIKE '% SP8 %' SET @NewSP += N'8</B>'
-	ELSE IF @Description LIKE '%Service Pack 9%' OR @Description LIKE '% SP9 %' SET @NewSP += N'9</B>'
+	 
+	IF @Description LIKE '%Service Pack 1%' OR @Description LIKE '% SP1 %' SET @NewSP += N'1'
+	ELSE IF @Description LIKE '%Service Pack 2%' OR @Description LIKE '% SP2 %' SET @NewSP += N'2'
+	ELSE IF @Description LIKE '%Service Pack 3%' OR @Description LIKE '% SP3 %' SET @NewSP += N'3'
+	ELSE IF @Description LIKE '%Service Pack 4%' OR @Description LIKE '% SP4 %' SET @NewSP += N'4'
+	ELSE IF @Description LIKE '%Service Pack 5%' OR @Description LIKE '% SP5 %' SET @NewSP += N'5'
+	ELSE IF @Description LIKE '%Service Pack 6%' OR @Description LIKE '% SP6 %' SET @NewSP += N'6'
+	ELSE IF @Description LIKE '%Service Pack 7%' OR @Description LIKE '% SP7 %' SET @NewSP += N'7'
+	ELSE IF @Description LIKE '%Service Pack 8%' OR @Description LIKE '% SP8 %' SET @NewSP += N'8'
+	ELSE IF @Description LIKE '%Service Pack 9%' OR @Description LIKE '% SP9 %' SET @NewSP += N'9'
 	ELSE SET @NewSP = N'';
 	IF EXISTS(SELECT TOP 1 1 FROM [Utility].[ufn_GetSupportEndDate](@Edition,@Ver) WHERE SupportEndDate < GETDATE())
 	BEGIN
 		
-		SET @Comment +=N'<br><font color =Black>Please download and install <B>' + @NewSP + N'.';
+		SET @Comment +=N'<br><font color =Black>Please download and install <B>' + @NewSP + N'</B>.';
 		SELECT	TOP 1 @Comment += CONCAT(N'<br>Then you can download and install - ',S.Description)
 		FROM	@SP S
 		ORDER BY S.Build DESC
@@ -82,7 +83,7 @@ BEGIN
 		SET @Comment += N'</B></font>'
 	END
 
-
+	IF [Utility].[ufn_GetSQLServerServicePack](@Ver,@ServicePack,@Ver) LIKE '%' + @NewSP + '%' SET @NewSP = '';
     SELECT  unpvt.name , unpvt.value,IIF(lt.link IS NULL,'Black','Blue') Color, lt.link [Link],lt.[Red],'<font color = ' + IIF(lt.link IS NULL,'Black','Blue') + '>' + IIF(lt.link IS NOT NULL,CONCAT('<HRef="',lt.link,'"><U>'),'') + unpvt.value + IIF(lt.link IS NOT NULL,'</U></A>','') + '</font>' + IIF(lt.Red IS NOT NULL,'<font color = red><B>' + lt.Red + '</B></font>','')[HTML]
     FROM    ( SELECT    ISNULL(Instance, '') Instance ,
                         ISNULL(SQLAccount, '') SQLAccount ,
@@ -104,7 +105,6 @@ BEGIN
 	UNION ALL SELECT 'Full Service Pack by MS:',[Utility].[ufn_GetSQLServerServicePack](@Ver,@ServicePack,@Ver),'Black' Color, NULL [Link],NULL [Red],'<font color = ' + IIF(@NewSP != N'',N'Red',N'Black') + N'>' + 
 	CASE WHEN @ServicePack LIKE '%SP%' THEN CONCAT('Service Pack ',RIGHT(@ServicePack,1))
 	ELSE @ServicePack END + IIF(@NewSP != N'',N'</font>. (There is "<B>' + @NewSP + N'</B>" out there).','</font>')
-	
 	UNION ALL SELECT 'Memory Configured:',CONCAT('(Min)',(SELECT TOP 1 CONVERT(NVARCHAR(4000),@MinServerMemory/1024) + 'GB'),'/',
 	(SELECT TOP 1 IIF(@MaxServerMemory = 2147483647,@PhysicalMemory,CONVERT(NVARCHAR(MAX),@MaxServerMemory/1024)+ 'GB')),'(Max) From: ',@PhysicalMemory),
 	CASE 
@@ -127,8 +127,14 @@ BEGIN
 				 WHEN T.SupportEndDate < DATEADD(DAY,-183,GETDATE()) THEN 'Red' ELSE 'Green' END + '><B>' + T.SupportEndDate + '</B></font>',@Comment)
 	FROM	[Utility].[ufn_GetSupportEndDate](@Edition,@Ver) T
 	UNION ALL 
-	SELECT TOP 1 'Number of instance installed on the server',TRY_CONVERT(NVARCHAR(35),COUNT(1)) + ' installed. ' + TRY_CONVERT(NVARCHAR(35),@Running) + ' Active. ' ,CASE WHEN COUNT(1) > 1 THEN 'Orange' ELSE 'Black' END, NULL [Link],NULL [Red],
-	'<font color =' + CASE WHEN COUNT(1) > 1 THEN 'Orange' ELSE 'Black' END + TRY_CONVERT(NVARCHAR(35),COUNT(1)) + ' installed. ' + TRY_CONVERT(NVARCHAR(35),@Running) + ' Active. </font>'
+	SELECT TOP 1 'Number of instance installed on the server',
+			TRY_CONVERT(NVARCHAR(35),IIF(COUNT(1)=0,1,COUNT(1))) + 
+			' installed. ' + TRY_CONVERT(NVARCHAR(35),IIF(@Running = 0 ,1,@Running)) + 
+			' Active. ' ,
+			CASE WHEN COUNT(1) > 1 THEN 'Orange' ELSE 'Black' END, NULL [Link],NULL [Red],
+			'<font color =' + CASE WHEN COUNT(1) > 1 THEN 'Orange' ELSE 'Black' END + '>' + TRY_CONVERT(NVARCHAR(35),COUNT(1)) + 
+			' installed. ' + TRY_CONVERT(NVARCHAR(35),IIF(@Running = 0 ,1,@Running)) + 
+			' Active. </font>'
 	FROM	Client.Registery R WHERE R.guid = @guid AND R.Service = 'SQL Server Engine'
 	UNION ALL 
 	SELECT	TOP 1 'Number Of Deadlocks',CONCAT(CONVERT(NVARCHAR(MAX),deadlock_monitor_serial_number),' Since - ',CONVERT(NVARCHAR(MAX),SP.sqlserver_start_time,13)), 'Black',NULL [Link],NULL [Red],
@@ -143,6 +149,7 @@ BEGIN
 	SELECT	'Average Page Life Expectancy (PLE)',CONVERT(NVARCHAR(MAX),Utility.[ufn_ConvertTimeToHHMMSS](SP.PLE,'s')), IIF(SP.PLE < 300,'Red','Black'),NULL [Link],NULL [Red],'<font color = ' + IIF(SP.PLE < 300,'Red','Black') + '>' + CONVERT(NVARCHAR(MAX),Utility.[ufn_ConvertTimeToHHMMSS](SP.PLE,'s')) + '</font>'
 	FROM	Client.ServerProporties SP
 	WHERE	SP.guid = @guid
+			AND SP.PLE IS NOT NULL
 	UNION ALL 
 	SELECT 'Volumes',NULL,'red',NULL,'Server have only one drive. Please add drive for Data, Log, TempDB and Backup files for best performance.' [Red],'<font color = red>Server have only one drive. Please add drive for Data, Log, TempDB and Backup files for best performance.</font>'
 	WHERE 1= (SELECT	COUNT(*)FROM Client.Volumes V WHERE	V.guid = @guid)
@@ -166,5 +173,16 @@ BEGIN
 	FROM	Client.HADRServices HS
 	WHERE	hs.Guid = @guid
 			AND Mirror = 1
-
+	UNION ALL 
+	SELECT	'HADR: Cluster feature','Active', 'Black',NULL [Link],NULL [Red],'<font color = Black>Active</font>'
+	FROM	Client.HADRServices HS
+	WHERE	hs.Guid = @guid
+			AND HS.Cluster = 1
+	UNION ALL 
+	SELECT	B.FindingsGroup,CONCAT(B.Finding,'-',B.Details), 'Black',NULL [Link],NULL [Red],CONCAT('<font color = Black>',B.Finding,'-',B.Details,'</font>')
+	FROM	Client.Blitz B
+	WHERE	B.guid = @Guid
+			AND B.Finding NOT IN ('High VLF Count')
+			AND B.FindingsGroup NOT IN ('Wait Stats','Rundate','Server Info','Informational','Licensing','Non-Default Server Config')
+			AND B.DatabaseName IS NULL
 END

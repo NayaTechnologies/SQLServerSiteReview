@@ -93,12 +93,57 @@ BEGIN
 	,Status BIT 'Status'
 	);
 
-	DECLARE @PLE INT;
-	SELECT @PLE = AveragePageLifeExpectancy
-	FROM OPENXML(@hDoc, 'SiteReview/PLE/Data')--PLE
+	
+	INSERT [Client].[HeavyQueries]
+	        ( guid, CheckType, execution_count ,AvgScore,last_execution_time,AvgDuration,query_text,database_name)
+	SELECT @guid [guid],CheckType,execution_count,AvgScore,last_execution_time,AvgDuration,query_text,database_name
+	FROM OPENXML(@hDoc, 'SiteReview/HeavyQueries/Data')--Configuration
 	WITH 
-	(AveragePageLifeExpectancy  INT 'AveragePageLifeExpectancy'
+	(CheckType  sysname 'CheckType'
+	,execution_count BIGINT 'execution_count'
+	,AvgScore  INT  'AvgScore'
+	,last_execution_time DATETIME  'last_execution_time'
+	,AvgDuration INT  'AvgDuration'
+	,query_text NVARCHAR(MAX) 'query_text'
+	,database_name sysname 'database_name'
 	);
+	
+	INSERT [Client].CPUHistory
+	        ( guid, EventTimeFrom, EventTimeTo ,SQLCPU,IdleCPU,Others)
+	SELECT @guid [guid],EventTimeFrom,EventTimeTo,SQLCPU,IdleCPU,Others
+	FROM OPENXML(@hDoc, 'SiteReview/CPUHistory/Data')--Configuration
+	WITH 
+	(EventTimeFrom  DATETIME 'EventTimeFrom'
+	,EventTimeTo DATETIME 'EventTimeTo'
+	,SQLCPU  INT 'SQLCPU'
+	,IdleCPU INT 'IdleCPU'
+	,Others INT 'Others'
+	);
+	
+	
+	INSERT [Client].[SysAdmin]
+	        ( guid, name, type ,ParentGroup)
+	SELECT @guid [guid],name,type,ParentGroup
+	FROM OPENXML(@hDoc, 'SiteReview/SysAdmin/Data')--Configuration
+	WITH 
+	(name  [sysname] 'name'
+	,type [sysname] 'type'
+	,ParentGroup [sysname] 'ParentGroup'
+	);
+
+	--INSERT [Client].RemoteServerNode
+	--        ( guid, Software, Status )
+	--SELECT @guid [guid],Software,Status
+	--FROM OPENXML(@hDoc, 'SiteReview/RemoteServerNode/Data')--RemoteServerNode
+	--WITH 
+	--(Software  [NVARCHAR](255) 'Software'
+	--,Status BIT 'Status'
+	--);
+
+
+	DECLARE @PLE INT;
+	SELECT  @PLE = ParamValues.xmlnode.value('./AveragePageLifeExpectancy[1][not(@xsi:nil = "true")]','int') 
+	FROM    @XML.nodes('(/SiteReview/PLE/Data)') AS ParamValues (xmlnode);
 
 	INSERT INTO [Client].[DatabaseFiles]
 			   ([Database_Name]
@@ -153,6 +198,20 @@ BEGIN
 		keyName NVARCHAR(255) 'keyname',
 		Value sysname 'value',
 		CurrentInstance bit 'CurrentInstance'
+	);
+
+	INSERT Client.DebugError
+	        ( guid ,
+	          [Subject] ,
+	          Error ,
+	          Duration
+	        )
+	SELECT @guid [guid], [Subject] , Error ,  ISNULL(Duration,0) 
+	FROM OPENXML(@hDoc, 'SiteReview/DebugError/Data')--DebugError
+	WITH 
+	(	[Subject] sysname 'Subject',
+		Error NVARCHAR(MAX) 'Error',
+		Duration INT 'Duration'
 	);
 
 	INSERT Client.HADRServices
@@ -560,7 +619,8 @@ BEGIN
 	          NumberOfLogFiles,
 			  IsBizTalk,
 			  IsCRMDynamics,
-			  IsSharePoint
+			  IsSharePoint,
+			  IsTFS
 	        )
 	SELECT @guid [guid], name ,
                          database_id ,
@@ -616,9 +676,10 @@ BEGIN
                          VLFCount ,
                          NumberOfDataFiles ,
                          NumberOfLogFiles,
-						 IsBizTalk,
-						 IsCRMDynamics,
-						 IsSharePoint
+						 ISNULL(IsBizTalk,0),
+						 ISNULL(IsCRMDynamics,0),
+						 ISNULL(IsSharePoint,0),
+						 ISNULL(IsTFS,0)
 	FROM OPENXML(@hDoc, 'SiteReview/Databases/Data')--DatabaseFiles
 	WITH 
 	(name sysname 'name',
@@ -677,7 +738,8 @@ BEGIN
 		NumberOfLogFiles INT 'NumberOfLogFiles',
 		IsBizTalk BIT 'IsBizTalk',
 		IsCRMDynamics BIT 'IsCRMDynamics',
-		IsSharePoint BIT 'IsSharePoint')
+		IsSharePoint BIT 'IsSharePoint',
+		IsTFS BIT 'IsTFS')
 
 		INSERT Client.ProductVersion
 		        ( Guid, Version )

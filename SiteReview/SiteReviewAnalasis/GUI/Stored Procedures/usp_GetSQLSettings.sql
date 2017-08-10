@@ -46,27 +46,51 @@ BEGIN
 			AND R.Service = 'Error Reporting Enabled'
 			AND R.Value = '1'
 	UNION ALL 
-	SELECT	R.Service [Subject],'The number of error log files -' + R.Value + '.' [Status],'Increase the number of <font color =Blue><HRef="https://msdn.microsoft.com/en-us/library/ms177285.aspx"><U>error log</U></A></font> to 30. Than add Job to cycle the error log etch day.'[Reco],'Black' [Color],NULL [Link]
+	SELECT	R.Service [Subject],'The number of error log files - ' + R.Value + '.' [Status],'Increase the number of <font color =Blue><HRef="https://msdn.microsoft.com/en-us/library/ms177285.aspx"><U>error log</U></A></font> to 30. Than add Job to cycle the error log etch day.'[Reco],'Black' [Color],NULL [Link]
 	FROM	Client.Registery R
 	WHERE	R.guid = @guid
 			AND R.CurrentInstance = 1
 			AND R.Service = 'Number Error Logs'
 			AND R.Value = '6'
 	UNION ALL 
-	SELECT	'Service startup type'[Subject],'Startup type of service - ' + SS.ServiceName + ' is confugured to - ' + SS.StartupTypeDesc + '.'  [Status],'Change startup type of service to "Automatic".'[Reco],'Black' [Color],NULL [Link]
+	SELECT	'Number Error Logs' [Subject],'The number of error log files - 6.' [Status],'Increase the number of <font color =Blue><HRef="https://msdn.microsoft.com/en-us/library/ms177285.aspx"><U>error log</U></A></font> to 30. Than add Job to cycle the error log etch day.'[Reco],'Black' [Color],NULL [Link]
+	WHERE	NOT EXISTS (SELECT TOP 1 1 
+		FROM	Client.Registery R
+		WHERE	R.guid = @guid
+				AND R.CurrentInstance = 1
+				AND R.Service = 'Number Error Logs')
+	UNION ALL 
+	SELECT	'Service startup type'[Subject],'Startup type of service - ' + SS.ServiceName + ' is confugured to - <B>' + SS.StartupTypeDesc + '</B>.'  [Status],'Change startup type of service to "<B>Automatic</B>".'[Reco],'Black' [Color],NULL [Link]
 	FROM	Client.ServerServices SS
 	WHERE	SS.Guid = @guid
 			AND SS.StartupType != 2 --Auto
 	UNION ALL 
-	SELECT	'TraceFlag',IIF(CTF.[Link] IS NOT NULL,CONCAT('<font color =Blue><HRef="',CTF.[Link],'"><U>TraceFlag</U></A></font>'),'TraceFlag') + ' No-' + CONVERT(NVARCHAR(25),CTF.TraceFlag) + ' (' + CTF.Description + ') is off.','Turn on TraceFlag No - ' + IIF(CTF.[Link] IS NOT NULL,CONCAT('<font color =Blue><HRef="',CTF.[Link],'"><U>',CONVERT(NVARCHAR(25),CTF.TraceFlag),'</U></A></font>'),CONVERT(NVARCHAR(25),CTF.TraceFlag)) + '.',IIF(CTF.Link IS NULL,'Black','Blue') [Color],CTF.[Link]
+	SELECT	TOP 1 'Service state'[Subject],'SQL Server Agent is in state - <B>Stopped</B>'[Status],'Turn on the service'[Reco],'Black' [Color],NULL [Link]
+	FROM	Client.ServerServices SS
+	WHERE	servicename LIKE 'SQL Server Agent%'
+			AND status = 1
+			AND SS.Guid = @guid
+	UNION ALL 
+	SELECT	'TraceFlag',IIF(CTF.[Link] IS NOT NULL,CONCAT('<font color =Blue><HRef="',CTF.[Link],'"><U>TraceFlag</U></A></font>'),'TraceFlag') + ' No-' + CONVERT(NVARCHAR(25),CTF.TraceFlag) + ' (' + CTF.Description + ') is off.','Consider this SQL startup traceflags. Remember, the answer to “should I do this on all my servers?” is not “<strong>yes</strong>”, the answer is “<strong>it depends on the situation</strong>”.<br>
+* ' + IIF(CTF.[Link] IS NOT NULL,CONCAT('<font color =Blue><HRef="',CTF.[Link],'"><U>',CONVERT(NVARCHAR(25),CTF.TraceFlag),'</U></A></font>',CASE 
+WHEN CTF.TraceFlag = 1118 THEN ' (reduce tempdb contention, <font color =Blue><HRef="http://www.sqlskills.com/blogs/paul/misconceptions-around-tf-1118"><U>Paul says everyone should turn it on, there’s no downside.</U></A></font>)'
+WHEN CTF.TraceFlag = 1222 THEN ' (<font color =Blue><HRef="https://www.simple-talk.com/sql/database-administration/handling-deadlocks-in-sql-server"><U>XML deadlock graph</U></A></font>, you’re unlikely to get deadlocks because we find most of them while dogfooding, but this information is useful if you do hit them.)'
+WHEN CTF.TraceFlag = 1117 THEN ' (equal file autogrowth for tempdb files).'
+WHEN CTF.TraceFlag = 1211 THEN ' (prevent table lock escalation) (<font color =Blue><HRef="http://support.microsoft.com/kb/934005"><U>KB934005</U></A></font>)'
+ELSE ''
+END,IIF(STF.Software != '' ,'-<strong> ' + STF.Software + ' Best Practices</strong>','')),CONVERT(NVARCHAR(25),CTF.TraceFlag)) + '.',IIF(CTF.Link IS NULL,'Black','Blue') [Color],CTF.[Link]
 	FROM	Configuration.TraceFlag CTF
 			LEFT JOIN Client.TraceFlag TF ON TF.TraceFlag = CTF.TraceFlag
 				AND TF.guid = @guid
+			OUTER APPLY(SELECT Utility.ufn_Util_clr_Conc(STF.Software)Software FROM Configuration.SoftwareTraceFlage STF WHERE STF.TraceFlag = CTF.TraceFlag
+				AND STF.Software IN (SELECT S.Software FROM Client.Software S WHERE S.Status = 1 AND S.guid = @guid))STF
 	WHERE	TF.guid IS NULL
 			AND @Ver BETWEEN ISNULL(CTF.FromProductVersion,@Ver) AND ISNULL(CTF.ToProductVersion,@Ver)
 			AND CTF.TraceFlag NOT IN (1448)
+
 	UNION ALL 
-	SELECT	'TraceFlag',IIF(CTF.[Link] IS NOT NULL,CONCAT('<font color =Blue><HRef="',CTF.[Link],'"><U>TraceFlag</U></A></font>'),'TraceFlag') + ' No-' + CONVERT(NVARCHAR(25),CTF.TraceFlag) + ' (' + CTF.Description + ') is off.','Turn on TraceFlag No - ' + IIF(CTF.[Link] IS NOT NULL,CONCAT('<font color =Blue><HRef="',CTF.[Link],'"><U>',CONVERT(NVARCHAR(25),CTF.TraceFlag),'</U></A></font>'),CONVERT(NVARCHAR(25),CTF.TraceFlag)) + '.',IIF(CTF.Link IS NULL,'Black','Blue') [Color],CTF.[Link]
+	SELECT	'TraceFlag',IIF(CTF.[Link] IS NOT NULL,CONCAT('<font color =Blue><HRef="',CTF.[Link],'"><U>TraceFlag</U></A></font>'),'TraceFlag') + ' No-' + CONVERT(NVARCHAR(25),CTF.TraceFlag) + ' (' + CTF.Description + ') is off.','Consider this SQL startup traceflags. Remember, the answer to “should I do this on all my servers?” is not “yes”, the answer is “it depends on the situation”.<br>
+* ' + IIF(CTF.[Link] IS NOT NULL,CONCAT('<font color =Blue><HRef="',CTF.[Link],'"><U>',CONVERT(NVARCHAR(25),CTF.TraceFlag),'</U></A></font>'),CONVERT(NVARCHAR(25),CTF.TraceFlag)) + '.',IIF(CTF.Link IS NULL,'Black','Blue') [Color],CTF.[Link]
 	FROM	Configuration.TraceFlag CTF
 			LEFT JOIN Client.TraceFlag TF ON TF.TraceFlag = CTF.TraceFlag
 				AND TF.guid = @guid

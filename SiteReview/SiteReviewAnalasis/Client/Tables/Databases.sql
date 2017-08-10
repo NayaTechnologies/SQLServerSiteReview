@@ -54,11 +54,14 @@
     [VLFCount]                            INT              NOT NULL,
     [NumberOfDataFiles]                   INT              NOT NULL,
     [NumberOfLogFiles]                    INT              NOT NULL,
-    [IsBizTalk]                           BIT              NULL,
-    [IsCRMDynamics]                       BIT              NULL,
-    [IsSharePoint]                        BIT              NULL,
-    [IsSAP]                               BIT              NULL
+    [IsBizTalk]                           BIT              CONSTRAINT [DF_Databases_IsBizTalk] DEFAULT ((0)) NOT NULL,
+    [IsCRMDynamics]                       BIT              CONSTRAINT [DF_Databases_IsCRMDynamics] DEFAULT ((0)) NOT NULL,
+    [IsSharePoint]                        BIT              CONSTRAINT [DF_Databases_IsSharePoint] DEFAULT ((0)) NOT NULL,
+    [IsSAP]                               BIT              CONSTRAINT [DF_Databases_IsSAP] DEFAULT ((0)) NOT NULL,
+    [IsTFS]                               BIT              CONSTRAINT [DF_Databases_IsTFS] DEFAULT ((0)) NOT NULL
 ) TEXTIMAGE_ON [Client];
+
+
 
 
 GO

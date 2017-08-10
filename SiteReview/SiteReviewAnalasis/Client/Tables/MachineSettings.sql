@@ -19,8 +19,12 @@
     [InstantInitializationDisabled] BIT              NULL,
     [LockPagesInMemoryDisabled]     BIT              NULL,
     [MaxClockSpeed]                 INT              NULL,
-    [CurrentClockSpeed]             INT              NULL
+    [CurrentClockSpeed]             INT              NULL,
+    [LicenseType]                   AS               ([Utility].[ufn_GetSQLServerLicenseType]([Version])),
+    [MajorVersion]                  AS               ([Utility].[ufn_GetSQLServerMajorVersion]([Version]))
 ) TEXTIMAGE_ON [Client];
+
+
 
 
 GO
