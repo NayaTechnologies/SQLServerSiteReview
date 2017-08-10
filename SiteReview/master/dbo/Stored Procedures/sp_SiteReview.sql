@@ -1,4 +1,20 @@
+<<<<<<< HEAD
 ﻿/*
+=======
+USE master
+GO
+IF OBJECT_ID('dbo.sp_SiteReview') IS NULL
+EXEC('CREATE PROCEDURE [dbo].[sp_SiteReview] AS ');
+GO
+IF OBJECT_ID('master.dbo.SiteReview') IS NOT NULL
+EXEC('drop table master.dbo.SiteReview');
+go
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+/*
+>>>>>>> origin/master
 =============================================
 Author:             Sharon Rimer
 M@il:               SharonR@NAYA-Tech.co.il
@@ -27,7 +43,11 @@ Execute:
 TODO:
 	Find missing index per heavy query
 ============================================================================*/
+<<<<<<< HEAD
 CREATE PROCEDURE [dbo].[sp_SiteReview] ( @Client NVARCHAR(255) = N'General Client',@Allow_Weak_Password_Check BIT = 0,@debug BIT = 0,@Display BIT = 0,@Mask BIT = 1,@Help BIT = 0)
+=======
+ALTER PROCEDURE [dbo].[sp_SiteReview] ( @Client NVARCHAR(255) = N'General Client',@Allow_Weak_Password_Check BIT = 0,@debug BIT = 0,@Display BIT = 0,@Mask BIT = 1,@Help BIT = 0)
+>>>>>>> origin/master
 AS
 BEGIN
        SET NOCOUNT ON;
@@ -3159,6 +3179,7 @@ DEALLOCATE curDBMirror;
        BEGIN CATCH
               INSERT @DebugError VALUES  ('Mirroring info',ERROR_MESSAGE(),DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
        END CATCH
+<<<<<<< HEAD
 --------------------------------------------------------------------------------------------------------
 	CREATE TABLE #SR_MaintenancePlanFiles (
 		[MaintenancePlanName] sysname NULL,
@@ -3239,6 +3260,88 @@ DEALLOCATE curDBMirror;
 		END CATCH
 	END
 --------------------------------------------------------------------------------------------------------
+=======
+--------------------------------------------------------------------------------------------------------
+	CREATE TABLE #SR_MaintenancePlanFiles (
+		[MaintenancePlanName] sysname NULL,
+		SizeInMB DECIMAL(13,2)  NULL,
+		NumberOfFiles BIGINT NULL,
+		[OldFile] VARCHAR(100) NULL);
+	IF @IsLinux = 0
+	BEGIN
+       BEGIN TRY
+			SET @DebugStartTime = GETDATE();
+			IF @debug = 1 RAISERROR ('Collect Maintplan Plans Logs',0,1) WITH NOWAIT;
+			DECLARE @line varchar(400)
+			DECLARE @1MB    DECIMAL;
+			SET     @1MB = 1024 * 1024;
+			DECLARE @1KB    DECIMAL;
+			SET     @1KB = 1024 ;
+			---------------------------------------------------------------------------------------------
+			-- Temp tables creation
+			---------------------------------------------------------------------------------------------
+			IF OBJECT_ID('tempdb..#MPLtempFilePaths') IS NOT NULL DROP TABLE #MPLtempFilePaths;
+			IF OBJECT_ID('tempdb..#MPLtempFileInformation') IS NOT NULL DROP TABLE #MPLtempFileInformation;
+			IF OBJECT_ID('tempdb..#MPLoutput') IS NOT NULL DROP TABLE #MPLoutput;
+			CREATE TABLE #MPLoutput (Directory varchar(400), FilePath VARCHAR(400), SizeInMB DECIMAL(13,2), SizeInKB DECIMAL(13,2),FileDate VARCHAR(100))
+			
+			CREATE TABLE #MPLtempFilePaths (Files VARCHAR(500))
+			CREATE TABLE #MPLtempFileInformation (FilePath VARCHAR(500), FileSize VARCHAR(100),FileDate VARCHAR(100))
+			---------------------------------------------------------------------------------------------
+			-- Call xp_cmdshell
+			---------------------------------------------------------------------------------------------    
+			SET @Command = 'dir "'+ @LogPath +'"';
+			INSERT INTO #MPLtempFilePaths exec master.sys.xp_cmdshell @Command;
+			---------------------------------------------------------------------------------------------
+			-- Process the return data
+			--------------------------------------------------------------------------------------------- 
+			--delete all directories
+			DELETE #MPLtempFilePaths WHERE Files LIKE '%<dir>%' OR Files IS NULL;
+			--delete all informational messages
+			DELETE #MPLtempFilePaths WHERE Files LIKE ' %';
+			-- Store the FileName & Size
+			INSERT INTO #MPLtempFileInformation
+			SELECT  RIGHT(FD.files,LEN(FD.files) -PATINDEX('% %',FD.files)) AS FilePath,
+					REPLACE(LEFT(FD.files,PATINDEX('% %',FD.files)), ',','') AS FileSize,
+					FD.FileDate
+			FROM	#MPLtempFilePaths
+                   CROSS APPLY(SELECT TOP 1 LEFT(Files,10) [FileDate],LTRIM(RIGHT(Files,(LEN(Files)-20)))[files])FD;
+			--------------------------------------------------------------
+			-- Store the results in the #MPLoutput table
+			--------------------------------------------------------------
+			DELETE  FROM #MPLtempFileInformation WHERE ISNUMERIC(FileSize) = 0;
+			INSERT	#MPLoutput--(FilePath, SizeInMB, SizeInKB)
+			SELECT  @LogPath,
+					FilePath,
+					CAST(CAST(FileSize AS DECIMAL(13,2))/ @1MB AS DECIMAL(13,2)),
+					CAST(CAST(FileSize AS DECIMAL(13,2))/ @1KB AS DECIMAL(13,2)),
+					FileDate
+			FROM    #MPLtempFileInformation
+			OPTION(RECOMPILE);
+			--------------------------------------------------------------------------------------------
+			DELETE FROM #MPLoutput WHERE Directory is null       
+			----------------------------------------------
+			-- DROP temp tables
+			----------------------------------------------
+			IF OBJECT_ID('tempdb..#MPLtempFilePaths') IS NOT NULL DROP TABLE #MPLtempFilePaths  
+			IF OBJECT_ID('tempdb..#MPLtempFileInformation') IS NOT NULL DROP TABLE #MPLtempFileInformation  
+			INSERT	#SR_MaintenancePlanFiles
+			SELECT	mp.name [MaintenancePlanName],
+					F.SizeInMB ,
+					F.NumberOfFiles,
+					F.[OldFile]
+			FROM	msdb.dbo.sysmaintplan_plans mp
+					OUTER APPLY(SELECT SUM(SizeInMB)[SizeInMB],COUNT_BIG(1)[NumberOfFiles],MIN(FileDate)[OldFile] FROM #MPLoutput WHERE FilePath LIKE mp.name + '%')F
+			OPTION(RECOMPILE);
+			IF OBJECT_ID('tempdb..#MPLoutput') IS NOT NULL DROP TABLE #MPLoutput;
+			INSERT @DebugError VALUES  ('Maintplan Plans Logs',NULL,DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
+		END TRY
+		BEGIN CATCH
+			INSERT @DebugError VALUES  ('Maintplan Plans Logs',ERROR_MESSAGE(),DATEDIFF(SECOND,@DebugStartTime,GETDATE()));
+		END CATCH
+	END
+--------------------------------------------------------------------------------------------------------
+>>>>>>> origin/master
 --------------------------------------------------------------------------------------------------------
        BEGIN TRY
 			SET @DebugStartTime = GETDATE();
@@ -3977,4 +4080,8 @@ GTError:
        PRINT @Print;
        IF @ErrorLog IS NOT NULL
               RAISERROR(@ErrorLog,16,1);
+<<<<<<< HEAD
 END
+=======
+END
+>>>>>>> origin/master
